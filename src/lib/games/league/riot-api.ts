@@ -219,6 +219,45 @@ export async function lastFinishedMatch(
   return matchDetails(cluster, ids[0]);
 }
 
+/**
+ * Match-v5 IDs are prefixed with the platform the match was played on
+ * ("EUW1_7840303334", "NA1_5234232", "KR_7321456"). Parsing the prefix
+ * lets us auto-detect which platform a PUUID actually plays on without
+ * asking the user for region.
+ */
+export function platformFromMatchId(matchId: string): Platform | null {
+  const prefix = matchId.split("_")[0]?.toLowerCase();
+  if (!prefix) return null;
+  if ((ALL_PLATFORMS as readonly string[]).includes(prefix)) return prefix as Platform;
+  return null;
+}
+
+/** Resolve the player's primary platform via their most recent match.
+ *  Tries every cluster — Match-v5 IDs come from the cluster the match
+ *  was played on, not the cluster the Riot account lives in. A KR player
+ *  with a "EUW" tag will have asia-cluster matches.
+ */
+export async function detectPlatform(
+  preferredCluster: RegionalCluster,
+  puuid: string,
+): Promise<Platform | null> {
+  const order = [preferredCluster, "americas", "europe", "asia", "sea"].filter(
+    (v, i, a) => a.indexOf(v) === i,
+  ) as RegionalCluster[];
+  for (const cluster of order) {
+    try {
+      const ids = await recentMatchIds(cluster, puuid, 3);
+      for (const id of ids) {
+        const p = platformFromMatchId(id);
+        if (p) return p;
+      }
+    } catch {
+      // try next cluster
+    }
+  }
+  return null;
+}
+
 export function clusterForPlatform(platform: Platform): RegionalCluster {
   return PLATFORM_TO_CLUSTER[platform];
 }

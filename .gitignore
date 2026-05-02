@@ -39,6 +39,7 @@ icons-*.png
 searching-*.png
 real-data-*.png
 fallback-*.png
+history-*.png
 
 # debug
 npm-debug.log*

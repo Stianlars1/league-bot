@@ -14,6 +14,21 @@ export interface MatchAnalysis {
   plan: MatchPlan;
 }
 
+/** Lightweight thumbnail of a finished match for history list */
+export interface MatchSummary {
+  matchId: string;
+  championId: string;
+  championName: string;
+  championImageUrl?: string;
+  win: boolean;
+  kda: { kills: number; deaths: number; assists: number };
+  cs: number;
+  durationSeconds: number;
+  endedMsAgo: number;
+  mode?: string;
+  position?: string;
+}
+
 /** Calculated intelligence layer on top of a Match */
 export interface WinProbability {
   ally: number; // 0..100

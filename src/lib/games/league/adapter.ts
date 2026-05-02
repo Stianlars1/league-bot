@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db, schema } from "../../db/client";
 import type { GameAdapter } from "../adapter";
-import type { Character, Match, Participant, Player } from "../types";
+import type { Character, Match, MatchSummary, Participant, Player } from "../types";
 import { getChampMeta } from "./data";
 import {
   championImageUrl,
@@ -15,10 +15,14 @@ import {
   ALL_PLATFORMS,
   activeGameByPuuid,
   clusterForPlatform,
+  detectPlatform,
   lastFinishedMatch,
   lookupAccount,
+  matchDetails,
+  recentMatchIds,
   type MatchV5Detail,
   type Platform,
+  type RegionalCluster,
 } from "./riot-api";
 
 const DEFAULT_PLATFORM: Platform = "euw1";
@@ -188,11 +192,35 @@ export const leagueAdapter: GameAdapter = {
   recommender: leagueRecommender,
 
   async findPlayer(query: string): Promise<Player> {
-    const { gameName, tagLine, platform } = parseRiotIdInput(query);
-    const cluster = clusterForPlatform(platform);
-    const account = await lookupAccount(cluster, gameName, tagLine);
+    const { gameName, tagLine, platform: hint } = parseRiotIdInput(query);
+    // Account-v1 is region-agnostic — try every cluster until one finds the
+    // account. This means a user typing "Faker#KR1" without "(kr)" still
+    // resolves correctly even if the default cluster is europe.
+    const initialCluster = clusterForPlatform(hint);
+    const clusters = [initialCluster, "americas", "europe", "asia", "sea"].filter(
+      (v, i, a) => a.indexOf(v) === i,
+    ) as RegionalCluster[];
 
-    // Persist for future lookups
+    let account: Awaited<ReturnType<typeof lookupAccount>> | null = null;
+    let resolvedCluster: RegionalCluster = initialCluster;
+    for (const cluster of clusters) {
+      try {
+        account = await lookupAccount(cluster, gameName, tagLine);
+        resolvedCluster = cluster;
+        break;
+      } catch {
+        // try next cluster
+      }
+    }
+    if (!account) {
+      throw new Error(`No Riot account matches "${gameName}#${tagLine}" in any region.`);
+    }
+
+    // Detect actual platform via Match-v5 ID prefix instead of guessing.
+    // Falls back to the parser hint if the player has no public matches.
+    const detected = await detectPlatform(resolvedCluster, account.puuid);
+    const platform: Platform = detected ?? hint;
+
     await db()
       .insert(schema.players)
       .values({
@@ -225,6 +253,38 @@ export const leagueAdapter: GameAdapter = {
     const detail = await lastFinishedMatch(cluster, player.externalId);
     if (!detail) return null;
     return await convertMatchV5(detail, player.externalId);
+  },
+
+  async getRecentMatches(player: Player, limit = 5): Promise<MatchSummary[]> {
+    const platform = (player.region as Platform | undefined) ?? DEFAULT_PLATFORM;
+    const cluster = clusterForPlatform(platform);
+    const ids = await recentMatchIds(cluster, player.externalId, limit);
+    if (ids.length === 0) return [];
+    const details = await Promise.all(
+      ids.map((id) => matchDetails(cluster, id).catch(() => null)),
+    );
+    const summaries: MatchSummary[] = [];
+    for (const d of details) {
+      if (!d) continue;
+      const me = d.info.participants.find((p) => p.puuid === player.externalId);
+      if (!me) continue;
+      const character = await lookupCharacter(me.championId);
+      const endedAt = d.info.gameEndTimestamp ?? d.info.gameStartTimestamp + d.info.gameDuration * 1000;
+      summaries.push({
+        matchId: d.metadata.matchId,
+        championId: character.id,
+        championName: character.name,
+        championImageUrl: character.imageUrl,
+        win: me.win,
+        kda: { kills: me.kills, deaths: me.deaths, assists: me.assists },
+        cs: me.totalMinionsKilled + (me.neutralMinionsKilled ?? 0),
+        durationSeconds: d.info.gameDuration,
+        endedMsAgo: Math.max(0, Date.now() - endedAt),
+        mode: d.info.gameMode,
+        position: me.teamPosition || me.individualPosition,
+      });
+    }
+    return summaries;
   },
 
   async getActiveMatch(player: Player): Promise<Match | null> {

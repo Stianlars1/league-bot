@@ -5,6 +5,7 @@ import type {
   Match,
   MatchIntel,
   MatchPlan,
+  MatchSummary,
   Player,
   Recommendation,
 } from "./types";
@@ -42,6 +43,12 @@ export interface GameAdapter {
    * surface meaningful analysis. Optional — return null if not supported.
    */
   getLastFinishedMatch?(player: Player): Promise<Match | null>;
+
+  /**
+   * Returns lightweight summaries of the player's most recent finished
+   * matches for the history strip. Optional.
+   */
+  getRecentMatches?(player: Player, limit?: number): Promise<MatchSummary[]>;
 
   /** Static character catalog used to seed the DB. Called by the cron job. */
   getCharacterCatalog(): Promise<Character[]>;

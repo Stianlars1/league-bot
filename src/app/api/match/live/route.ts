@@ -8,6 +8,7 @@ import type {
   Match,
   MatchIntel,
   MatchPlan,
+  MatchSummary,
   Player,
   Recommendation,
 } from "@/lib/games/types";
@@ -21,6 +22,7 @@ interface Payload {
   allyActions: AllyAction[];
   plan: MatchPlan | null;
   intel: MatchIntel | null;
+  recentMatches: MatchSummary[];
   fetchedAt: number;
 }
 
@@ -74,11 +76,15 @@ export async function GET(req: Request) {
           }
         }
 
+        // Recent matches strip — fire in parallel, never blocks the main view
+        const recentMatchesPromise = adapter.getRecentMatches?.(player, 5).catch(() => []) ?? Promise.resolve([]);
+
         const recommendations = match ? adapter.recommender.recommend(match) : [];
         const allyActions = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
         const plan = match ? (adapter.recommender.plan?.(match) ?? null) : null;
         const intel = match ? (adapter.recommender.intel?.(match) ?? null) : null;
-        return { match, recommendations, allyActions, plan, intel, fetchedAt: Date.now() };
+        const recentMatches = await recentMatchesPromise;
+        return { match, recommendations, allyActions, plan, intel, recentMatches, fetchedAt: Date.now() };
       },
     });
 
@@ -89,6 +95,7 @@ export async function GET(req: Request) {
         allyActions: [],
         plan: null,
         intel: null,
+        recentMatches: [],
         fetchedAt: Date.now(),
       },
     );

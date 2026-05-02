@@ -9,6 +9,7 @@ import type {
   Match,
   MatchIntel,
   MatchPlan,
+  MatchSummary,
   Recommendation,
 } from "@/lib/games/types";
 
@@ -18,6 +19,7 @@ export interface LivePayload {
   allyActions: AllyAction[];
   plan: MatchPlan | null;
   intel: MatchIntel | null;
+  recentMatches: MatchSummary[];
   fetchedAt: number;
   error?: string;
   mock?: {
@@ -39,6 +41,7 @@ const fetcher = async (url: string): Promise<LivePayload> => {
       allyActions: [],
       plan: null,
       intel: null,
+      recentMatches: [],
       fetchedAt: Date.now(),
       error: json.error,
     };

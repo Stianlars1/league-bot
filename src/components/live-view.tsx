@@ -11,6 +11,7 @@ import { LaneMatchups } from "./lane-matchups";
 import { LiveScoreBar } from "./live-score-bar";
 import styles from "./live-view.module.css";
 import { MacroCallBanner } from "./macro-call-banner";
+import { MatchHistoryStrip } from "./match-history-strip";
 import { MatchIntelStrip } from "./match-intel-strip";
 import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
@@ -142,6 +143,14 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
                 fetchedAt={data.fetchedAt}
               />
             ) : null}
+
+            {/* Last 5 matches as compact cards */}
+            {data.recentMatches.length > 0 ? (
+              <MatchHistoryStrip
+                key={`history-${match.matchId}`}
+                matches={data.recentMatches}
+              />
+            ) : null}
           </>
         ) : status === "searching" ? (
           <section className={styles.statusCard} data-status={status}>
@@ -218,6 +227,11 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
             </div>
           </section>
         )}
+
+        {/* Recent matches: show in searching/error state too if available */}
+        {status !== "live" && data?.recentMatches && data.recentMatches.length > 0 ? (
+          <MatchHistoryStrip matches={data.recentMatches} />
+        ) : null}
       </main>
     </>
   );
