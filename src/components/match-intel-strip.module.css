@@ -1,0 +1,191 @@
+.strip {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 880px) {
+  .strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Win probability ---------- */
+.winCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+}
+
+.winHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.winLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}
+
+.winNumbers {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+.winAlly {
+  font-size: 32px;
+  font-weight: 700;
+  color: hsl(var(--ally));
+  text-shadow: 0 0 24px hsl(var(--ally) / 0.3);
+}
+
+.winSep {
+  color: hsl(var(--subtle));
+  font-weight: 300;
+}
+
+.winEnemy {
+  font-size: 32px;
+  font-weight: 700;
+  color: hsl(var(--enemy));
+  text-shadow: 0 0 24px hsl(var(--enemy) / 0.3);
+}
+
+.winBar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: hsl(var(--surface-3));
+}
+
+.winFillAlly {
+  height: 100%;
+  background: hsl(var(--ally));
+  transition: width 600ms var(--ease-out);
+}
+
+.winFillEnemy {
+  height: 100%;
+  background: hsl(var(--enemy));
+  transition: width 600ms var(--ease-out);
+}
+
+.winDrivers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.driver {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface-2));
+  color: hsl(var(--muted));
+}
+
+.driver[data-side="ally"] {
+  border-color: hsl(var(--ally) / 0.4);
+  color: hsl(var(--ally));
+}
+
+.driver[data-side="enemy"] {
+  border-color: hsl(var(--enemy) / 0.4);
+  color: hsl(var(--enemy));
+}
+
+/* ---------- Objective timers ---------- */
+.objCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+}
+
+.objHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.objList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.objRow {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm);
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.objRow[data-status="available"] {
+  background: hsl(var(--data) / 0.07);
+  border-color: hsl(var(--data) / 0.4);
+}
+
+.objIcon {
+  font-size: 14px;
+  text-align: center;
+  color: hsl(var(--muted));
+}
+
+.objRow[data-status="available"] .objIcon {
+  color: hsl(var(--data));
+  text-shadow: 0 0 8px hsl(var(--data));
+}
+
+.objLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.objDetail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted));
+  margin-top: 2px;
+}
+
+.objCountdown {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+.objCountdown[data-available="true"] {
+  color: hsl(var(--data));
+  font-weight: 600;
+}

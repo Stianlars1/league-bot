@@ -2,13 +2,21 @@
 
 import useSWR from "swr";
 
-import type { AllyAction, GameId, Match, MatchPlan, Recommendation } from "@/lib/games/types";
+import type {
+  AllyAction,
+  GameId,
+  Match,
+  MatchIntel,
+  MatchPlan,
+  Recommendation,
+} from "@/lib/games/types";
 
 export interface LivePayload {
   match: Match | null;
   recommendations: Recommendation[];
   allyActions: AllyAction[];
   plan: MatchPlan | null;
+  intel: MatchIntel | null;
   fetchedAt: number;
   error?: string;
   mock?: {
@@ -29,6 +37,7 @@ const fetcher = async (url: string): Promise<LivePayload> => {
       recommendations: [],
       allyActions: [],
       plan: null,
+      intel: null,
       fetchedAt: Date.now(),
       error: json.error,
     };

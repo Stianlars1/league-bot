@@ -1,7 +1,8 @@
 import { getAllyActions, getMatchPlan } from "./league/ally-actions";
+import { computeMatchIntel } from "./league/intel";
 import { leagueRecommender } from "./league/recommender";
 import { buildMatchFromScenario, currentScenario, MOCK_SCENARIOS } from "./mock-scenarios";
-import type { AllyAction, Match, MatchPlan, Recommendation } from "./types";
+import type { AllyAction, Match, MatchIntel, MatchPlan, Recommendation } from "./types";
 
 export interface MockMeta {
   scenarioId: string;
@@ -17,6 +18,7 @@ export interface MockPayload {
   recommendations: Recommendation[];
   allyActions: AllyAction[];
   plan: MatchPlan;
+  intel: MatchIntel | null;
   fetchedAt: number;
   mock: MockMeta;
 }
@@ -33,6 +35,7 @@ export function buildMockPayload(): MockPayload {
     recommendations: leagueRecommender.recommend(match),
     allyActions: getAllyActions(match),
     plan: getMatchPlan(match),
+    intel: computeMatchIntel(match),
     fetchedAt: Date.now(),
     mock: {
       scenarioId: scenario.id,

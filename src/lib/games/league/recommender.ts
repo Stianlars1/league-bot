@@ -2,6 +2,7 @@ import type { Recommender } from "../adapter";
 import type { Match, Recommendation } from "../types";
 import { getAllyActions, getMatchPlan } from "./ally-actions";
 import { getChampMeta, type LeagueChampMeta } from "./data";
+import { computeMatchIntel } from "./intel";
 
 /**
  * Rules-based draft coach for LoL. Reads enemy team comp from the normalized
@@ -40,6 +41,7 @@ function fallbackName(id: string) {
 export const leagueRecommender: Recommender = {
   allyActions: (match: Match) => getAllyActions(match),
   plan: (match: Match) => getMatchPlan(match),
+  intel: (match: Match) => computeMatchIntel(match),
 
   recommend(match: Match): Recommendation[] {
     const enemies = match.teams[1].participants;

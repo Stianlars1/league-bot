@@ -3,6 +3,7 @@ import type {
   Character,
   GameId,
   Match,
+  MatchIntel,
   MatchPlan,
   Player,
   Recommendation,
@@ -14,6 +15,8 @@ export interface Recommender {
   allyActions?(match: Match): AllyAction[];
   /** Top-level "how do we beat this comp" plan. Optional. */
   plan?(match: Match): MatchPlan;
+  /** Match-state intel: win prob, objectives, power spikes, lane matchups. */
+  intel?(match: Match): MatchIntel | null;
 }
 
 export interface GameAdapter {

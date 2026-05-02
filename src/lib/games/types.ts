@@ -14,6 +14,53 @@ export interface MatchAnalysis {
   plan: MatchPlan;
 }
 
+/** Calculated intelligence layer on top of a Match */
+export interface WinProbability {
+  ally: number; // 0..100
+  enemy: number; // 0..100
+  /** Top 3 reasons sorted by absolute impact, ally-positive first */
+  drivers: { label: string; deltaPct: number }[];
+}
+
+export interface ObjectiveTimer {
+  kind: "drake" | "herald" | "baron" | "elder";
+  status: "available" | "cooldown" | "gone";
+  /** Seconds until next spawn from now. Negative if available already. */
+  inSeconds: number;
+  /** Human-friendly label like "Cloud drake (estimated)" */
+  detail?: string;
+}
+
+export interface PowerSpike {
+  championId: string;
+  championName: string;
+  side: "ally" | "enemy";
+  position?: string;
+  description: string; // "2-item spike (Stormrazor + RFC)"
+  /** Seconds from now until spike. Negative if already past. */
+  inSeconds: number;
+  importance: "low" | "medium" | "high";
+}
+
+export interface LaneMatchup {
+  position: string;
+  ally: { championId: string; championName: string; imageUrl?: string; stats?: ParticipantStats };
+  enemy: { championId: string; championName: string; imageUrl?: string; stats?: ParticipantStats };
+  /** -100..100, positive = ally winning the lane */
+  laneScore: number;
+  goldDelta: number;
+  csDelta: number;
+  kdaDelta: number;
+  summary: string;
+}
+
+export interface MatchIntel {
+  winProbability: WinProbability;
+  objectives: ObjectiveTimer[];
+  powerSpikes: PowerSpike[];
+  laneMatchups: LaneMatchup[];
+}
+
 export type Side = "ally" | "enemy" | "blue" | "red" | "radiant" | "dire";
 
 export type DamageType = "ad" | "ap" | "hybrid" | "physical" | "magical" | "pure" | "unknown";

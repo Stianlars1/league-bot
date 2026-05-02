@@ -1,0 +1,152 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.titleAccent {
+  color: hsl(var(--severity-high));
+  margin-left: 4px;
+}
+
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 200ms var(--ease-out);
+}
+
+.card[data-side="ally"]::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: hsl(var(--ally));
+  opacity: 0.7;
+}
+
+.card[data-side="enemy"]::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: hsl(var(--enemy));
+  opacity: 0.7;
+}
+
+.card[data-importance="high"] {
+  border-color: hsl(var(--severity-high) / 0.35);
+}
+
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+  flex-shrink: 0;
+}
+
+.timerNumber {
+  font-size: 18px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.timerNumberSoon {
+  color: hsl(var(--severity-high));
+  text-shadow: 0 0 12px hsl(var(--severity-high) / 0.4);
+}
+
+.timerNumberNow {
+  color: hsl(var(--severity-critical));
+  text-shadow: 0 0 12px hsl(var(--severity-critical) / 0.4);
+}
+
+.timerLabel {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--subtle));
+  margin-top: 4px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.spikeChamp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.005em;
+}
+
+.spikeSide {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.spikeSide[data-side="ally"] {
+  color: hsl(var(--ally));
+  background: hsl(var(--ally) / 0.1);
+}
+
+.spikeSide[data-side="enemy"] {
+  color: hsl(var(--enemy));
+  background: hsl(var(--enemy) / 0.1);
+}
+
+.spikeDesc {
+  font-size: 12px;
+  color: hsl(var(--muted));
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+}

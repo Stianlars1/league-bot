@@ -7,11 +7,14 @@ import type { GameId } from "@/lib/games/types";
 
 import { AllyActionBoard } from "./ally-action-board";
 import { Header } from "./header";
+import { LaneMatchups } from "./lane-matchups";
 import { LiveScoreBar } from "./live-score-bar";
 import styles from "./live-view.module.css";
+import { MatchIntelStrip } from "./match-intel-strip";
 import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
 import { MockBanner } from "./mock-banner";
+import { PowerSpikes } from "./power-spikes";
 import { RecommendationsPanel } from "./recommendations-panel";
 
 interface LiveViewProps {
@@ -62,6 +65,31 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
                 key={`score-${match.matchId}`}
                 liveStats={match.liveStats}
                 fetchedAt={data.fetchedAt}
+              />
+            ) : null}
+
+            {/* Win prob meter + objective spawn timers */}
+            {data.intel ? (
+              <MatchIntelStrip
+                key={`intel-${match.matchId}`}
+                intel={data.intel}
+                fetchedAt={data.fetchedAt}
+              />
+            ) : null}
+
+            {/* Per-lane head-to-head */}
+            {data.intel ? (
+              <LaneMatchups
+                key={`lanes-${match.matchId}`}
+                matchups={data.intel.laneMatchups}
+              />
+            ) : null}
+
+            {/* Upcoming power spikes */}
+            {data.intel && data.intel.powerSpikes.length > 0 ? (
+              <PowerSpikes
+                key={`spikes-${match.matchId}`}
+                spikes={data.intel.powerSpikes}
               />
             ) : null}
 

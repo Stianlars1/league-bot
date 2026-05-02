@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { cachedMatch } from "@/lib/cache";
 import { buildMockPayload } from "@/lib/games/mock";
 import { getAdapter, isGameId } from "@/lib/games/registry";
-import type { AllyAction, Match, MatchPlan, Player, Recommendation } from "@/lib/games/types";
+import type {
+  AllyAction,
+  Match,
+  MatchIntel,
+  MatchPlan,
+  Player,
+  Recommendation,
+} from "@/lib/games/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +20,7 @@ interface Payload {
   recommendations: Recommendation[];
   allyActions: AllyAction[];
   plan: MatchPlan | null;
+  intel: MatchIntel | null;
   fetchedAt: number;
 }
 
@@ -56,7 +64,8 @@ export async function GET(req: Request) {
         const recommendations = match ? adapter.recommender.recommend(match) : [];
         const allyActions = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
         const plan = match ? (adapter.recommender.plan?.(match) ?? null) : null;
-        return { match, recommendations, allyActions, plan, fetchedAt: Date.now() };
+        const intel = match ? (adapter.recommender.intel?.(match) ?? null) : null;
+        return { match, recommendations, allyActions, plan, intel, fetchedAt: Date.now() };
       },
     });
 
@@ -66,6 +75,7 @@ export async function GET(req: Request) {
         recommendations: [],
         allyActions: [],
         plan: null,
+        intel: null,
         fetchedAt: Date.now(),
       },
     );
