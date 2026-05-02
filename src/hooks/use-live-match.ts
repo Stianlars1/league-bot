@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 
 import type {
@@ -65,10 +66,29 @@ export function useLiveMatch(params: {
   // Mock mode polls faster so the rotating scenarios are clearly visible.
   const refreshInterval = mock ? 5_000 : 15_000;
 
-  return useSWR<LivePayload>(enabled ? url : null, fetcher, {
+  const swr = useSWR<LivePayload>(enabled ? url : null, fetcher, {
     refreshInterval,
     revalidateOnFocus: false,
     keepPreviousData: true,
     shouldRetryOnError: false,
   });
+
+  // Track how many consecutive polls have returned no match. Lets the UI
+  // escalate the message from "searching" → "no match yet" → "Riot may
+  // not expose this match" instead of looping the same hopeful copy.
+  const [nullStreak, setNullStreak] = useState(0);
+  const lastFetchedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!swr.data) return;
+    if (swr.data.fetchedAt === lastFetchedAt.current) return;
+    lastFetchedAt.current = swr.data.fetchedAt;
+    if (swr.data.match) {
+      setNullStreak(0);
+    } else {
+      setNullStreak((s) => s + 1);
+    }
+  }, [swr.data]);
+
+  return { ...swr, nullStreak };
 }

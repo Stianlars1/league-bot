@@ -36,6 +36,7 @@ scenario-*.png
 stats-*.png
 intel-*.png
 icons-*.png
+searching-*.png
 
 # debug
 npm-debug.log*

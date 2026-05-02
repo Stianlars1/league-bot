@@ -28,7 +28,7 @@ interface LiveViewProps {
 }
 
 export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps) {
-  const { data, error, isLoading } = useLiveMatch({ game, id, region, name, mock });
+  const { data, error, isLoading, nullStreak } = useLiveMatch({ game, id, region, name, mock });
   const match = data?.match ?? null;
   const status: "live" | "searching" | "error" =
     error || data?.error ? "error" : match ? "live" : "searching";
@@ -136,20 +136,59 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
           <section className={styles.statusCard} data-status={status}>
             <span className={styles.statusBadge} data-status={status}>
               <span className={styles.statusDot} aria-hidden />
-              Searching for match
+              {nullStreak >= 10 ? "Riot may not be exposing this match" : nullStreak >= 4 ? "No active match detected" : "Searching for match"}
             </span>
             <h1 className={styles.statusTitle}>
-              Watching for{" "}
-              <span style={{ color: "hsl(var(--severity-medium))" }}>{name ?? "your"}</span>{" "}
-              next match…
+              {nullStreak >= 10 ? (
+                <>Riot's Spectator API isn&apos;t returning data for {name ?? "this player"}</>
+              ) : (
+                <>
+                  Watching for{" "}
+                  <span style={{ color: "hsl(var(--severity-medium))" }}>{name ?? "your"}</span>{" "}
+                  next match…
+                </>
+              )}
             </h1>
             <p className={styles.statusBody}>
               {caveat ?? "We poll for an active match every 15 seconds. Start a queue and this view will fill in once the game data unlocks."}
             </p>
             {isLoading ? null : (
               <div className={styles.metaRow}>
+                <Meta label="Polls so far" value={String(nullStreak)} />
                 <Meta label="Last check" value={data ? formatTimeAgo(data.fetchedAt) : "now"} />
                 <Meta label="Polling" value="15s" />
+              </div>
+            )}
+
+            {nullStreak >= 4 ? (
+              <div className={styles.searchingNote}>
+                <span className={styles.searchingNoteTitle}>Heads up — Riot Spectator-v5 limitation</span>
+                <p className={styles.searchingNoteBody}>
+                  Riot&apos;s Spectator API <strong>doesn&apos;t expose every live match</strong>. Custom games,
+                  Practice Tool, and many <strong>streamer / featured matches are filtered out by Riot policy</strong> (anti
+                  stream-sniping). Even if a player is clearly in a game, the API can return 404. There&apos;s no
+                  alternative endpoint — this is intentional on Riot&apos;s side.
+                </p>
+                <p className={styles.searchingNoteBody}>
+                  We&apos;ll keep polling — sometimes a match becomes visible after the first few minutes. If you
+                  want to verify the UI works, try the sample match.
+                </p>
+                <div className={styles.searchingActions}>
+                  <Link
+                    href="/live/league/sample?mock=1&name=Sample+Match"
+                    className={styles.searchingAction}
+                  >
+                    ► Open sample match
+                  </Link>
+                  <Link href="/" className={styles.searchingAction}>
+                    ← Try another player
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.searchingPolls}>
+                <span className={styles.searchingDot} aria-hidden />
+                Polling — {nullStreak} {nullStreak === 1 ? "check" : "checks"} so far
               </div>
             )}
           </section>
