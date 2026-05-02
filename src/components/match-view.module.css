@@ -1,0 +1,89 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 720px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.teamHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.teamLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.teamLabel[data-side="ally"] {
+  color: hsl(var(--ally));
+}
+
+.teamLabel[data-side="enemy"] {
+  color: hsl(var(--enemy));
+}
+
+.teamDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.teamLabel[data-side="ally"] .teamDot {
+  background: hsl(var(--ally));
+  box-shadow: 0 0 12px hsl(var(--ally) / 0.6);
+}
+
+.teamLabel[data-side="enemy"] .teamDot {
+  background: hsl(var(--enemy));
+  box-shadow: 0 0 12px hsl(var(--enemy) / 0.6);
+}
+
+.teamMeta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Stagger entrance for team members */
+.list > * {
+  opacity: 0;
+  animation: enter 420ms var(--ease-out) forwards;
+}
+.list > *:nth-child(1) { animation-delay: 0ms; }
+.list > *:nth-child(2) { animation-delay: 60ms; }
+.list > *:nth-child(3) { animation-delay: 120ms; }
+.list > *:nth-child(4) { animation-delay: 180ms; }
+.list > *:nth-child(5) { animation-delay: 240ms; }
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

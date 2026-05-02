@@ -1,0 +1,127 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.card[data-side="enemy"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: hsl(var(--enemy));
+  opacity: 0.7;
+}
+
+.card[data-side="ally"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: hsl(var(--ally));
+  opacity: 0.7;
+}
+
+.card:hover {
+  border-color: hsl(var(--border-strong));
+}
+
+.portrait {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portraitFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: hsl(var(--muted));
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.metaDot {
+  color: hsl(var(--subtle));
+}
+
+.tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: hsl(var(--surface-2));
+  color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+}
+
+.tag[data-severity="high"] {
+  color: hsl(var(--severity-high));
+  border-color: hsl(var(--severity-high) / 0.4);
+}
+
+.tag[data-severity="critical"] {
+  color: hsl(var(--severity-critical));
+  border-color: hsl(var(--severity-critical) / 0.4);
+}

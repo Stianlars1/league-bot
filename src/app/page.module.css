@@ -1,0 +1,47 @@
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 56px 32px 96px;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.glowBack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 600px 400px at 30% 20%, hsl(var(--data) / 0.18), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 80% 80%, hsl(var(--enemy) / 0.08), transparent 60%);
+  filter: blur(20px);
+  z-index: -1;
+}
+
+.footer {
+  padding: 32px;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}
+
+.footerLinks {
+  display: flex;
+  gap: 24px;
+}
+
+.footerLinks a {
+  transition: color 200ms var(--ease-out);
+}
+
+.footerLinks a:hover {
+  color: hsl(var(--data));
+}

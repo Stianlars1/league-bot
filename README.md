@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Counter — Live Draft Coach
 
-## Getting Started
+Live tactical recommendations against your opponent's team in **League of Legends** and **Dota 2**, powered by official public APIs (Riot Games, Stratz, OpenDota).
 
-First, run the development server:
+Drop in your Riot ID or Steam account ID. While you're in a match, the app pulls the live composition every 15 seconds and prescribes:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Defensive items** — Magic Resist vs AP, armor vs AD, antiheal vs healing comps
+- **Offensive items** — %HP damage vs tanks, MKB vs evasion, antishield
+- **Strategy** — engage windows, scaling vs early-game power, splitpush response
+- **Objective priority** — what to force, what to give up
+
+Designed multi-game from day 1 — adding Deadlock or another MOBA is a new adapter, not a refactor.
+
+---
+
+## Stack
+
+- **Next.js 16** (App Router, Turbopack, Fluid Compute on Vercel)
+- **CSS Modules** (no Tailwind) with shadcn-style HSL design tokens
+- **Motion** (Framer Motion v12) and **GSAP** for animation
+- **Drizzle ORM** + **Neon Postgres** (Vercel Marketplace)
+- **SWR** for client polling
+- **TypeScript strict**, ES2022 target
+
+## Architecture
+
+```
+src/lib/games/
+├── adapter.ts           GameAdapter + Recommender interface
+├── types.ts             Match, Participant, Character, Recommendation
+├── registry.ts          gameId → adapter
+├── league/
+│   ├── adapter.ts       Riot API integration
+│   ├── recommender.ts   League rules engine
+│   ├── data.ts          Curated champion catalog (~100 champs)
+│   ├── data-dragon.ts   Riot static asset CDN
+│   └── riot-api.ts      Account-v1 + Spectator-v5 client
+└── dota/
+    ├── adapter.ts       Stratz + OpenDota integration
+    ├── recommender.ts   Dota rules engine
+    ├── data.ts          Curated hero catalog (~125 heroes)
+    ├── stratz-api.ts    Stratz GraphQL client (live match)
+    └── opendota.ts      OpenDota REST client (profile + heroes)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The normalized `Match` type abstracts 5v5: teams, participants, characters, items, runes. Both adapters map their native shape into this — UI and recommender shells are game-agnostic.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm install
+cp .env.example .env.local   # then fill in keys
+pnpm db:generate             # regenerate migrations if you edit schema.ts
+pnpm db:push                 # push schema to your Neon DB
+pnpm dev
+```
 
-## Learn More
+## Required environment variables
 
-To learn more about Next.js, take a look at the following resources:
+| Var | Source | Notes |
+|---|---|---|
+| `DATABASE_URL` | Vercel Marketplace → Neon Postgres | Auto-provisioned when you install Neon |
+| `RIOT_API_KEY` | https://developer.riotgames.com | Personal dev key expires every 24h |
+| `STRATZ_API_KEY` | https://stratz.com/api | Free tier, sign in with Steam |
+| `OPENDOTA_API_KEY` | https://www.opendota.com/api-keys | Optional, raises rate limit |
+| `RIOT_REGIONAL_CLUSTER` | `americas` / `europe` / `asia` / `sea` | Default `europe` |
+| `CRON_SECRET` | `openssl rand -hex 32` | Authenticates `/api/cron/*` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Rate-limit strategy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **30 s server cache** of live match per player (`match_cache` table)
+- **In-process pending-promise dedupe** so concurrent requests for the same player coalesce into a single upstream call
+- **15 s polling** per client — well under per-user rate limits for Riot, Stratz, and OpenDota
+- Daily cron at `/api/cron/refresh-catalog` re-seeds the static character catalog
 
-## Deploy on Vercel
+## Deploying to Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dlx vercel link
+pnpm dlx vercel env add RIOT_API_KEY
+pnpm dlx vercel env add STRATZ_API_KEY
+pnpm dlx vercel env add OPENDOTA_API_KEY
+pnpm dlx vercel env add CRON_SECRET
+# Install Neon Postgres from the Vercel Marketplace — DATABASE_URL is auto-provisioned
+pnpm dlx vercel deploy --prod
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`vercel.json` registers a daily cron at 06:00 UTC to refresh the character catalog.
+
+## Caveats (real-world)
+
+- **Riot Spectator-v5** has a built-in ~3-minute delay per Riot policy. Recommendations appear once data unlocks, not at champ select.
+- **Stratz live coverage** is best-effort — some public matches may not appear immediately.
+- **Curated metadata** for champions/heroes is hand-coded in `data.ts` files. Extend over time; the recommender degrades gracefully when meta is missing (low-severity fallback hint).
+- **No third-party scraping**. All data is from sanctioned APIs (Riot Data Dragon, Stratz, OpenDota).
+
+## License
+
+Source code under MIT. Game assets and trademarks belong to their respective owners (Riot Games, Valve).
