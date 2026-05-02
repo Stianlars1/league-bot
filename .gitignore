@@ -31,6 +31,8 @@
 # review artifacts
 .playwright-mcp/
 review-*.png
+rotation-*.png
+scenario-*.png
 
 # debug
 npm-debug.log*

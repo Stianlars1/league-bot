@@ -10,6 +10,7 @@ import { Header } from "./header";
 import styles from "./live-view.module.css";
 import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
+import { MockBanner } from "./mock-banner";
 import { RecommendationsPanel } from "./recommendations-panel";
 
 interface LiveViewProps {
@@ -33,7 +34,7 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
 
   return (
     <>
-      <Header status={headerStatus} meta={`Polling every 15s`} />
+      <Header status={headerStatus} meta={mock ? "Polling every 5s · demo" : "Polling every 15s"} />
       <main className={styles.shell}>
         <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link href="/">← Home</Link>
@@ -45,8 +46,14 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
 
         {status === "live" && match && data?.plan ? (
           <>
+            {data.mock ? <MockBanner mock={data.mock} /> : null}
+
             {/* Hero card: enemy archetype + counter strategy + 3 top actions */}
-            <MatchPlanHero plan={data.plan} enemies={match.teams[1].participants} />
+            <MatchPlanHero
+              key={`hero-${match.matchId}`}
+              plan={data.plan}
+              enemies={match.teams[1].participants}
+            />
 
             {/* Status meta strip */}
             <section className={styles.statusStrip}>
@@ -54,19 +61,23 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               <Meta label="Game" value={match.mode ?? "—"} />
               <Meta label="Duration" value={formatDuration(match.durationSeconds)} />
               <Meta label="Region" value={(region ?? "—").toUpperCase()} />
-              <Meta label="Polling" value="15s" />
+              <Meta label="Polling" value={mock ? "5s" : "15s"} />
               <Meta label="Updated" value={formatTimeAgo(data.fetchedAt)} />
             </section>
 
             {/* The hero of the redesign: per-ally action cards */}
-            <AllyActionBoard actions={data.allyActions} />
+            <AllyActionBoard
+              key={`board-${match.matchId}`}
+              actions={data.allyActions}
+            />
 
             {/* 5v5 reference */}
-            <MatchView match={match} />
+            <MatchView key={`view-${match.matchId}`} match={match} />
 
             {/* Team-wide signals — secondary now */}
             {data.recommendations.length > 0 ? (
               <RecommendationsPanel
+                key={`recs-${match.matchId}`}
                 recommendations={data.recommendations}
                 fetchedAt={data.fetchedAt}
               />

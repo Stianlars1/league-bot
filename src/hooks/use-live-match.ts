@@ -11,6 +11,13 @@ export interface LivePayload {
   plan: MatchPlan | null;
   fetchedAt: number;
   error?: string;
+  mock?: {
+    scenarioId: string;
+    scenarioLabel: string;
+    scenarioIndex: number;
+    totalScenarios: number;
+    nextChangeIn: number;
+  };
 }
 
 const fetcher = async (url: string): Promise<LivePayload> => {
@@ -46,8 +53,11 @@ export function useLiveMatch(params: {
 
   const url = `/api/match/live?${search.toString()}`;
 
+  // Mock mode polls faster so the rotating scenarios are clearly visible.
+  const refreshInterval = mock ? 5_000 : 15_000;
+
   return useSWR<LivePayload>(enabled ? url : null, fetcher, {
-    refreshInterval: 15_000,
+    refreshInterval,
     revalidateOnFocus: false,
     keepPreviousData: true,
     shouldRetryOnError: false,

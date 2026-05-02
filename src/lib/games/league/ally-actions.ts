@@ -100,8 +100,8 @@ function buildForCarry(p: EnemyProfile, isPhysical: boolean): BuildResult {
   }
   if (p.ap >= 3 && !isPhysical) {
     return {
-      priority: { item: "Hexdrinker → Maw of Malmortius", reason: `${p.ap}/5 deal magic damage at you` },
-      followUps: ["Mercury's Treads", "Banshee's Veil", p.healing >= 1 ? "Morellonomicon" : "Void Staff"],
+      priority: { item: "Banshee's Veil", reason: `${p.ap}/5 deal magic damage at you — block their CC opener` },
+      followUps: ["Mercury's Treads", "Zhonya's Hourglass", p.healing >= 1 ? "Morellonomicon" : "Void Staff"],
     };
   }
   if (p.ap >= 3 && isPhysical) {

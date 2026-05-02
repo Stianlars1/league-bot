@@ -1,0 +1,92 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  background:
+    linear-gradient(90deg, hsl(var(--data) / 0.08), hsl(var(--data) / 0.02));
+  border: 1px solid hsl(var(--data) / 0.4);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--data));
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.labelDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: hsl(var(--data));
+  box-shadow: 0 0 12px hsl(var(--data));
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.6); }
+}
+
+.scenarioName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: hsl(var(--foreground));
+}
+
+.scenarioCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  width: 80px;
+  height: 4px;
+  background: hsl(var(--surface-3));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: hsl(var(--data));
+  border-radius: 999px;
+  transform-origin: left;
+  transition: transform 1s linear;
+}
+
+@media (max-width: 720px) {
+  .banner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .scenarioName {
+    flex-basis: 100%;
+    order: 3;
+  }
+}
