@@ -1,0 +1,210 @@
+.hero {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 32px;
+  padding: 32px 36px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--surface)) 0%,
+    hsl(var(--surface-2)) 100%
+  );
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 600px 200px at 0% 0%, hsl(var(--data) / 0.18), transparent 70%),
+    radial-gradient(ellipse 500px 240px at 100% 100%, hsl(var(--enemy) / 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+@media (max-width: 880px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 24px;
+  }
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eyebrowDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: hsl(var(--data));
+  box-shadow: 0 0 12px hsl(var(--data));
+}
+
+.archetypeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.enemyRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.enemyLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--enemy));
+}
+
+.enemyPortraits {
+  display: flex;
+  gap: -8px;
+}
+
+.enemyPortrait {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--enemy) / 0.5);
+  background: hsl(var(--surface-2));
+  overflow: hidden;
+  margin-left: -10px;
+  position: relative;
+  transition: transform 220ms var(--ease-out), z-index 0s;
+}
+
+.enemyPortrait:first-child {
+  margin-left: 0;
+}
+
+.enemyPortrait:hover {
+  transform: translateY(-2px) scale(1.08);
+  z-index: 2;
+  border-color: hsl(var(--enemy));
+}
+
+.enemyPortrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.archetypeChip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  background: hsl(var(--enemy) / 0.14);
+  border: 1px solid hsl(var(--enemy) / 0.5);
+  color: hsl(var(--enemy));
+  border-radius: 999px;
+}
+
+.strategy {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw + 0.4rem, 2.4rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+  text-wrap: balance;
+}
+
+.strategyHighlight {
+  color: hsl(var(--data));
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.rightLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  margin-bottom: 4px;
+}
+
+.actionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: hsl(var(--surface-2) / 0.7);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.action:hover {
+  border-color: hsl(var(--data) / 0.5);
+  transform: translateX(2px);
+}
+
+.actionIndex {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: hsl(var(--data));
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 24px;
+}
+
+.actionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.actionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+}
+
+.actionDetail {
+  font-size: 12.5px;
+  color: hsl(var(--muted));
+  line-height: 1.5;
+}

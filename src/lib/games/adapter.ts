@@ -1,7 +1,19 @@
-import type { Character, GameId, Match, Player, Recommendation } from "./types";
+import type {
+  AllyAction,
+  Character,
+  GameId,
+  Match,
+  MatchPlan,
+  Player,
+  Recommendation,
+} from "./types";
 
 export interface Recommender {
   recommend(match: Match): Recommendation[];
+  /** Per-ally specific build advice. Optional — falls back to empty array. */
+  allyActions?(match: Match): AllyAction[];
+  /** Top-level "how do we beat this comp" plan. Optional. */
+  plan?(match: Match): MatchPlan;
 }
 
 export interface GameAdapter {

@@ -7,6 +7,13 @@
 
 export type GameId = "league" | "dota";
 
+/** Bundled output of a match analysis — recommendations, ally plan, top-line plan */
+export interface MatchAnalysis {
+  recommendations: Recommendation[];
+  allyActions: AllyAction[];
+  plan: MatchPlan;
+}
+
 export type Side = "ally" | "enemy" | "blue" | "red" | "radiant" | "dire";
 
 export type DamageType = "ad" | "ap" | "hybrid" | "physical" | "magical" | "pure" | "unknown";
@@ -65,6 +72,40 @@ export interface Recommendation {
   title: string;
   body: string;
   rationale?: string; // short "because enemy has X, Y" trail
+  /** Items to surface as visual chips in the UI */
+  keyItems?: string[];
+  /** Which ally archetypes this advice applies to */
+  forArchetypes?: string[];
   /** Optional: target a specific ally so UI can pin it under that player */
   forAllyPosition?: string;
+}
+
+/**
+ * Per-ally action plan — what THIS specific player on the team should
+ * build, in priority order, against THIS enemy lineup. The UI rendering
+ * surface most players actually scan during a match.
+ */
+export interface AllyAction {
+  championId: string;
+  championName: string;
+  position?: string;
+  archetype?: string;
+  damageType?: DamageType;
+  imageUrl?: string;
+  /** Single highest-priority item with one-line reason */
+  priority: { item: string; reason: string };
+  /** 1–3 follow-up items in build order */
+  followUps: string[];
+  /** The single most dangerous enemy for this ally */
+  watchOut?: { championId: string; championName: string; reason: string };
+}
+
+/** Top-level "how do we beat this comp" — one paragraph, 1-2 actions */
+export interface MatchPlan {
+  /** Short label for the enemy's overall identity, e.g. "AP healers + tank engage" */
+  enemyArchetype: string;
+  /** One sentence: how to win against this comp */
+  counterStrategy: string;
+  /** Up to 3 highest-impact actions, in priority order */
+  topActions: { title: string; detail: string }[];
 }

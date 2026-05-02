@@ -1,5 +1,6 @@
 import type { Recommender } from "../adapter";
 import type { Match, Recommendation } from "../types";
+import { getAllyActions, getMatchPlan } from "./ally-actions";
 import { getChampMeta, type LeagueChampMeta } from "./data";
 
 /**
@@ -37,6 +38,9 @@ function fallbackName(id: string) {
 }
 
 export const leagueRecommender: Recommender = {
+  allyActions: (match: Match) => getAllyActions(match),
+  plan: (match: Match) => getMatchPlan(match),
+
   recommend(match: Match): Recommendation[] {
     const enemies = match.teams[1].participants;
     const allies = match.teams[0].participants;

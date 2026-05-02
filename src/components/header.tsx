@@ -15,7 +15,7 @@ export function Header({ status = "idle", meta }: HeaderProps) {
         <span className={styles.brandLabel}>
           <span>Counter</span>
           <span className={styles.brandSlash}>/</span>
-          <span style={{ color: "hsl(var(--muted))", fontWeight: 400 }}>live draft coach</span>
+          <span className={styles.brandSubLabel}>live draft coach</span>
         </span>
         <span className={styles.brandTag}>v0.1</span>
       </Link>

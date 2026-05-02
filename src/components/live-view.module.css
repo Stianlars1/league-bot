@@ -115,6 +115,16 @@
   line-height: 1.55;
 }
 
+.statusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 14px 20px;
+  background: hsl(var(--surface) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+}
+
 .metaRow {
   display: flex;
   flex-wrap: wrap;

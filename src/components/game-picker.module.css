@@ -204,6 +204,37 @@
   border-radius: var(--radius-md);
 }
 
+.sampleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: hsl(var(--surface) / 0.5);
+  border: 1px dashed hsl(var(--border-strong));
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted));
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.sampleRow:hover {
+  border-color: hsl(var(--data));
+  background: hsl(var(--data) / 0.05);
+  color: hsl(var(--foreground));
+}
+
+.sampleArrow {
+  color: hsl(var(--data));
+  margin-left: auto;
+  transition: transform 200ms var(--ease-out);
+}
+
+.sampleRow:hover .sampleArrow {
+  transform: translateX(3px);
+}
+
 .featureGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

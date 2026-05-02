@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -170,6 +171,15 @@ export function GamePicker() {
         </div>
         {error ? <div className={styles.error}>{error}</div> : null}
       </form>
+
+      <Link
+        href="/live/league/sample?mock=1&name=Sample+Match"
+        className={styles.sampleRow}
+      >
+        <span style={{ color: "hsl(var(--data))" }}>►</span>
+        <span>Don&apos;t have a Riot ID handy? Open the sample match.</span>
+        <span className={styles.sampleArrow}>→</span>
+      </Link>
 
       <div className={styles.featureGrid}>
         <Feature label="Damage profile" body="Counts AD/AP/Magical/Physical and surfaces the right resist items first." />

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { cachedMatch } from "@/lib/cache";
+import { buildMockPayload } from "@/lib/games/mock";
 import { getAdapter, isGameId } from "@/lib/games/registry";
-import type { Match, Player, Recommendation } from "@/lib/games/types";
+import type { AllyAction, Match, MatchPlan, Player, Recommendation } from "@/lib/games/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 interface Payload {
   match: Match | null;
   recommendations: Recommendation[];
+  allyActions: AllyAction[];
+  plan: MatchPlan | null;
   fetchedAt: number;
 }
 
@@ -19,6 +22,13 @@ export async function GET(req: Request) {
   const id = searchParams.get("id") ?? "";
   const region = searchParams.get("region") ?? undefined;
   const displayName = searchParams.get("name") ?? "";
+  const mock = searchParams.get("mock") === "1";
+
+  // Mock mode: bypass cache, adapter, and external APIs entirely.
+  // Useful for testing the UI when no live match is available.
+  if (mock) {
+    return NextResponse.json(buildMockPayload());
+  }
 
   if (!isGameId(game)) {
     return NextResponse.json({ error: "Unknown game" }, { status: 400 });
@@ -44,11 +54,21 @@ export async function GET(req: Request) {
       fetcher: async () => {
         const match = await adapter.getActiveMatch(player);
         const recommendations = match ? adapter.recommender.recommend(match) : [];
-        return { match, recommendations, fetchedAt: Date.now() };
+        const allyActions = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
+        const plan = match ? (adapter.recommender.plan?.(match) ?? null) : null;
+        return { match, recommendations, allyActions, plan, fetchedAt: Date.now() };
       },
     });
 
-    return NextResponse.json(cached ?? { match: null, recommendations: [], fetchedAt: Date.now() });
+    return NextResponse.json(
+      cached ?? {
+        match: null,
+        recommendations: [],
+        allyActions: [],
+        plan: null,
+        fetchedAt: Date.now(),
+      },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Live fetch failed";
     return NextResponse.json({ error: message }, { status: 500 });

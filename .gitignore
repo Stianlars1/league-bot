@@ -28,6 +28,10 @@
 .idea/
 .vscode/
 
+# review artifacts
+.playwright-mcp/
+review-*.png
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -13,6 +13,12 @@
   -webkit-backdrop-filter: blur(16px);
 }
 
+@media (max-width: 640px) {
+  .header {
+    padding: 12px 16px;
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -68,6 +74,22 @@
   padding: 4px 8px;
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
+}
+
+.brandSubLabel {
+  display: inline;
+  color: hsl(var(--muted));
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .brandSubLabel,
+  .brandSlash {
+    display: none;
+  }
+  .brandTag {
+    display: none;
+  }
 }
 
 .statusGroup {
