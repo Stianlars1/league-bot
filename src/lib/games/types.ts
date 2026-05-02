@@ -122,7 +122,9 @@ export interface LiveStats {
   /** Tracked locally with a ticking timer between polls so it stays accurate. */
   gameTimeSeconds: number;
   /** Whether scores/KDA come from a real source or mock — UI shows a flag */
-  source: "mock" | "live-client" | "spectator-only";
+  source: "mock" | "live-client" | "spectator-only" | "post-game";
+  /** For post-game: ms since match ended, so UI can show "3 min ago" */
+  endedMsAgo?: number;
   scores: { ally: TeamScore; enemy: TeamScore };
 }
 

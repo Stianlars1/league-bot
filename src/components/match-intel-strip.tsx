@@ -13,6 +13,8 @@ interface MatchIntelStripProps {
   intel: MatchIntel;
   fetchedAt: number;
   matchId: string;
+  /** When true, hide forward-looking elements like objective timers (post-game). */
+  retrospective?: boolean;
 }
 
 const OBJECTIVE_LABELS: Record<ObjectiveTimer["kind"], string> = {
@@ -31,18 +33,19 @@ function formatCountdown(seconds: number) {
   return `${m}:${rem.toString().padStart(2, "0")}`;
 }
 
-export function MatchIntelStrip({ intel, fetchedAt, matchId }: MatchIntelStripProps) {
+export function MatchIntelStrip({ intel, fetchedAt, matchId, retrospective }: MatchIntelStripProps) {
   return (
-    <section className={styles.strip}>
-      <WinProb intel={intel} matchId={matchId} />
-      <Objectives intel={intel} fetchedAt={fetchedAt} />
+    <section className={styles.strip} data-mode={retrospective ? "retrospective" : "live"}>
+      <WinProb intel={intel} matchId={matchId} retrospective={retrospective} />
+      {!retrospective ? <Objectives intel={intel} fetchedAt={fetchedAt} /> : <FinalSummary intel={intel} />}
     </section>
   );
 }
 
-function WinProb({ intel, matchId }: { intel: MatchIntel; matchId: string }) {
+function WinProb({ intel, matchId, retrospective }: { intel: MatchIntel; matchId: string; retrospective?: boolean }) {
   const { ally, enemy, drivers } = intel.winProbability;
   const history = useWinProbHistory(matchId, ally);
+  void retrospective;
   return (
     <div className={styles.winCard}>
       <div className={styles.winHead}>
@@ -119,6 +122,33 @@ function Sparkline({ points }: { points: number[] }) {
         <path d={path} fill="none" stroke="hsl(var(--ally))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={lastX} cy={lastY} r="2.5" fill="hsl(var(--ally))" />
       </svg>
+    </div>
+  );
+}
+
+function FinalSummary({ intel }: { intel: MatchIntel }) {
+  const winnerIsAlly = intel.winProbability.ally > intel.winProbability.enemy;
+  const margin = Math.abs(intel.winProbability.ally - intel.winProbability.enemy);
+  const verdict =
+    margin >= 60 ? (winnerIsAlly ? "Dominant ally win" : "Dominant enemy win") :
+    margin >= 25 ? (winnerIsAlly ? "Solid ally victory" : "Solid enemy victory") :
+    margin >= 10 ? (winnerIsAlly ? "Close ally win" : "Close enemy win") :
+    "Coinflip — could've gone either way";
+
+  return (
+    <div className={styles.objCard}>
+      <div className={styles.objHead}>
+        <span className={styles.winLabel}>Match summary</span>
+      </div>
+      <div className={styles.objList}>
+        <div className={styles.objRow}>
+          <span className={styles.objIcon}>★</span>
+          <div>
+            <div className={styles.objLabel}>{verdict}</div>
+            <div className={styles.objDetail}>Final win-prob {intel.winProbability.ally}% / {intel.winProbability.enemy}%</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

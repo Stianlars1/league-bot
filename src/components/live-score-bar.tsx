@@ -49,6 +49,11 @@ export function LiveScoreBar({ liveStats, fetchedAt }: LiveScoreBarProps) {
     );
   }
 
+  // post-game: same score bar layout, but timer label says "Final" + ago
+  const isPostGame = liveStats.source === "post-game";
+  const ago = liveStats.endedMsAgo;
+  const agoLabel = ago === undefined ? "" : ago < 60_000 ? "Just ended" : ago < 3_600_000 ? `${Math.floor(ago / 60_000)} min ago` : `${Math.floor(ago / 3_600_000)} h ago`;
+
   const ally = liveStats.scores.ally;
   const enemy = liveStats.scores.enemy;
 
@@ -63,9 +68,9 @@ export function LiveScoreBar({ liveStats, fetchedAt }: LiveScoreBarProps) {
         <span className={styles.dash}>—</span>
         <span className={styles.timer}>
           <span className={styles.timerDot} aria-hidden />
-          {formatTime(ticking)}
+          {isPostGame ? formatTime(liveStats.gameTimeSeconds) : formatTime(ticking)}
         </span>
-        <span className={styles.timerLabel}>Game time</span>
+        <span className={styles.timerLabel}>{isPostGame ? `Final · ${agoLabel}` : "Game time"}</span>
       </div>
       <div className={styles.side + " " + styles.sideRight}>
         <span className={styles.label} data-team="enemy">Enemy</span>

@@ -36,6 +36,13 @@ export interface GameAdapter {
    */
   getActiveMatch(player: Player): Promise<Match | null>;
 
+  /**
+   * Returns the player's most recently completed match (post-game).
+   * Used as a fallback when getActiveMatch returns null so we can still
+   * surface meaningful analysis. Optional — return null if not supported.
+   */
+  getLastFinishedMatch?(player: Player): Promise<Match | null>;
+
   /** Static character catalog used to seed the DB. Called by the cron job. */
   getCharacterCatalog(): Promise<Character[]>;
 

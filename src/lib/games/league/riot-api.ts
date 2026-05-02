@@ -142,6 +142,83 @@ export async function activeGameByPuuid(
   }
 }
 
+/* ---------------- Match-v5 (regional cluster) ---------------- */
+
+export interface MatchV5Participant {
+  puuid: string;
+  championId: number;
+  championName: string;
+  teamId: number;
+  individualPosition?: string;
+  teamPosition?: string;
+  champLevel: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  totalMinionsKilled: number;
+  neutralMinionsKilled?: number;
+  goldEarned: number;
+  summoner1Id: number;
+  summoner2Id: number;
+  perks?: { styles: { style: number; description: string; selections: { perk: number }[] }[] };
+  win: boolean;
+}
+
+export interface MatchV5Team {
+  teamId: number;
+  win: boolean;
+  objectives: {
+    champion: { kills: number };
+    tower: { kills: number };
+    dragon: { kills: number };
+    riftHerald: { kills: number };
+    baron: { kills: number };
+    inhibitor: { kills: number };
+  };
+}
+
+export interface MatchV5Detail {
+  metadata: { matchId: string; participants: string[] };
+  info: {
+    gameMode: string;
+    gameType: string;
+    queueId: number;
+    gameDuration: number;
+    gameStartTimestamp: number;
+    gameEndTimestamp?: number;
+    participants: MatchV5Participant[];
+    teams: MatchV5Team[];
+  };
+}
+
+export async function recentMatchIds(
+  cluster: RegionalCluster,
+  puuid: string,
+  count = 1,
+): Promise<string[]> {
+  return riotFetch<string[]>(
+    cluster,
+    `/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}`,
+  );
+}
+
+export async function matchDetails(
+  cluster: RegionalCluster,
+  matchId: string,
+): Promise<MatchV5Detail> {
+  return riotFetch<MatchV5Detail>(cluster, `/lol/match/v5/matches/${encodeURIComponent(matchId)}`);
+}
+
+/** Combined helper: get most recent finished match's full details, or null. */
+export async function lastFinishedMatch(
+  cluster: RegionalCluster,
+  puuid: string,
+): Promise<MatchV5Detail | null> {
+  const ids = await recentMatchIds(cluster, puuid, 1);
+  if (ids.length === 0) return null;
+  return matchDetails(cluster, ids[0]);
+}
+
 export function clusterForPlatform(platform: Platform): RegionalCluster {
   return PLATFORM_TO_CLUSTER[platform];
 }

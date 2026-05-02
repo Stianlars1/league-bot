@@ -15,7 +15,9 @@ import {
   ALL_PLATFORMS,
   activeGameByPuuid,
   clusterForPlatform,
+  lastFinishedMatch,
   lookupAccount,
+  type MatchV5Detail,
   type Platform,
 } from "./riot-api";
 
@@ -95,6 +97,87 @@ function inferPosition(hasSmite: boolean): string | undefined {
   return hasSmite ? "JUNGLE" : undefined;
 }
 
+/**
+ * Match-v5 has full per-participant stats + team objectives. We use this as a
+ * fallback when Spectator-v5 returns null (player not in a live match, or
+ * Riot is filtering them) — the user still sees a richly analyzed match.
+ */
+async function convertMatchV5(detail: MatchV5Detail, focusedPuuid: string): Promise<Match> {
+  const focused = detail.info.participants.find((p) => p.puuid === focusedPuuid);
+  const focusedTeamId = focused?.teamId ?? 100;
+
+  const participants: Participant[] = await Promise.all(
+    detail.info.participants.map(async (p) => {
+      const character = await lookupCharacter(p.championId);
+      // Match-v5 includes resolved position — use it instead of guessing
+      const position =
+        p.teamPosition && p.teamPosition !== ""
+          ? p.teamPosition
+          : p.individualPosition && p.individualPosition !== "Invalid"
+            ? p.individualPosition
+            : undefined;
+      return {
+        side: p.teamId === focusedTeamId ? "ally" : "enemy",
+        team: p.teamId === 100 ? "blue" : "red",
+        position,
+        character,
+        summonerSpells: [
+          SUMMONER_SPELLS[p.summoner1Id] ?? `Spell ${p.summoner1Id}`,
+          SUMMONER_SPELLS[p.summoner2Id] ?? `Spell ${p.summoner2Id}`,
+        ],
+        runes: p.perks
+          ? {
+              primary: String(p.perks.styles?.[0]?.style ?? ""),
+              secondary: String(p.perks.styles?.[1]?.style ?? ""),
+            }
+          : undefined,
+        stats: {
+          kills: p.kills,
+          deaths: p.deaths,
+          assists: p.assists,
+          cs: p.totalMinionsKilled + (p.neutralMinionsKilled ?? 0),
+          gold: p.goldEarned,
+          level: p.champLevel,
+        },
+      } satisfies Participant;
+    }),
+  );
+
+  const ally = participants.filter((p) => p.side === "ally");
+  const enemy = participants.filter((p) => p.side === "enemy");
+
+  const allyTeamId = focusedTeamId;
+  const enemyTeamId = focusedTeamId === 100 ? 200 : 100;
+  const allyTeam = detail.info.teams.find((t) => t.teamId === allyTeamId);
+  const enemyTeam = detail.info.teams.find((t) => t.teamId === enemyTeamId);
+  const sumScore = (t?: MatchV5Detail["info"]["teams"][number]) => ({
+    kills: t?.objectives.champion.kills ?? 0,
+    towers: t?.objectives.tower.kills ?? 0,
+    drakes: t?.objectives.dragon.kills ?? 0,
+    heralds: t?.objectives.riftHerald.kills ?? 0,
+    barons: t?.objectives.baron.kills ?? 0,
+    inhibitors: t?.objectives.inhibitor.kills ?? 0,
+  });
+
+  const endedAt = detail.info.gameEndTimestamp ?? detail.info.gameStartTimestamp + detail.info.gameDuration * 1000;
+
+  return {
+    gameId: "league",
+    matchId: String(detail.metadata.matchId),
+    mode: detail.info.gameMode,
+    startedAt: detail.info.gameStartTimestamp,
+    durationSeconds: detail.info.gameDuration,
+    teams: [{ participants: ally }, { participants: enemy }],
+    liveStats: {
+      gameTimeSeconds: detail.info.gameDuration,
+      source: "post-game",
+      endedMsAgo: Math.max(0, Date.now() - endedAt),
+      scores: { ally: sumScore(allyTeam), enemy: sumScore(enemyTeam) },
+    },
+    meta: { raw: detail },
+  };
+}
+
 export const leagueAdapter: GameAdapter = {
   gameId: "league",
   displayName: "League of Legends",
@@ -134,6 +217,14 @@ export const leagueAdapter: GameAdapter = {
       displayName: `${account.gameName}#${account.tagLine}`,
       region: platform,
     };
+  },
+
+  async getLastFinishedMatch(player: Player): Promise<Match | null> {
+    const platform = (player.region as Platform | undefined) ?? DEFAULT_PLATFORM;
+    const cluster = clusterForPlatform(platform);
+    const detail = await lastFinishedMatch(cluster, player.externalId);
+    if (!detail) return null;
+    return await convertMatchV5(detail, player.externalId);
   },
 
   async getActiveMatch(player: Player): Promise<Match | null> {

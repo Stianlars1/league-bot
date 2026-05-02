@@ -16,6 +16,7 @@ import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
 import { MockBanner } from "./mock-banner";
 import { PowerSpikes } from "./power-spikes";
+import { RecentMatchBanner } from "./recent-match-banner";
 import { RecommendationsPanel } from "./recommendations-panel";
 
 interface LiveViewProps {
@@ -30,10 +31,11 @@ interface LiveViewProps {
 export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps) {
   const { data, error, isLoading, nullStreak } = useLiveMatch({ game, id, region, name, mock });
   const match = data?.match ?? null;
+  const isPostGame = match?.liveStats?.source === "post-game";
   const status: "live" | "searching" | "error" =
     error || data?.error ? "error" : match ? "live" : "searching";
 
-  const headerStatus = status === "live" ? "live" : "idle";
+  const headerStatus = status === "live" && !isPostGame ? "live" : "idle";
 
   const gameLabel = game === "league" ? "League of Legends" : "Dota 2";
 
@@ -53,8 +55,16 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
           <>
             {data.mock ? <MockBanner mock={data.mock} /> : null}
 
-            {/* The single most important tactical call right now */}
-            {data.intel?.macroCall ? (
+            {/* Recent-match callout when we fell back to Match-v5 */}
+            {isPostGame && match.liveStats?.endedMsAgo !== undefined ? (
+              <RecentMatchBanner
+                endedMsAgo={match.liveStats.endedMsAgo}
+                playerName={name}
+              />
+            ) : null}
+
+            {/* The single most important tactical call right now (live only) */}
+            {!isPostGame && data.intel?.macroCall ? (
               <MacroCallBanner
                 key={`macro-${match.matchId}-${data.intel.macroCall.headline}`}
                 call={data.intel.macroCall}
@@ -78,13 +88,14 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               />
             ) : null}
 
-            {/* Win prob meter + objective spawn timers + history sparkline */}
+            {/* Win prob meter + objective spawn timers (live) or match summary (post-game) */}
             {data.intel ? (
               <MatchIntelStrip
                 key={`intel-${match.matchId}`}
                 intel={data.intel}
                 fetchedAt={data.fetchedAt}
                 matchId={match.matchId}
+                retrospective={isPostGame}
               />
             ) : null}
 
@@ -96,8 +107,8 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               />
             ) : null}
 
-            {/* Upcoming power spikes */}
-            {data.intel && data.intel.powerSpikes.length > 0 ? (
+            {/* Upcoming power spikes — only meaningful for live games */}
+            {!isPostGame && data.intel && data.intel.powerSpikes.length > 0 ? (
               <PowerSpikes
                 key={`spikes-${match.matchId}`}
                 spikes={data.intel.powerSpikes}
@@ -221,10 +232,11 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-function statsSourceLabel(source: "mock" | "live-client" | "spectator-only" | undefined) {
+function statsSourceLabel(source: "mock" | "live-client" | "spectator-only" | "post-game" | undefined) {
   if (source === "mock") return "Mock data";
   if (source === "live-client") return "Live Client API";
   if (source === "spectator-only") return "Spectator (limited)";
+  if (source === "post-game") return "Match-v5 (recent)";
   return "—";
 }
 

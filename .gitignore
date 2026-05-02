@@ -37,6 +37,8 @@ stats-*.png
 intel-*.png
 icons-*.png
 searching-*.png
+real-data-*.png
+fallback-*.png
 
 # debug
 npm-debug.log*

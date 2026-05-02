@@ -60,7 +60,20 @@ export async function GET(req: Request) {
       ttlSeconds: 30,
       nullTtlSeconds: 12,
       fetcher: async () => {
-        const match = await adapter.getActiveMatch(player);
+        // Try live match first
+        let match = await adapter.getActiveMatch(player);
+
+        // Fallback: most recent finished match (post-game). Riot's Spectator-v5
+        // returns null for many cases (3-min delay, custom games, streamer
+        // policy filter) — Match-v5 has full historical data we can analyze.
+        if (!match && adapter.getLastFinishedMatch) {
+          try {
+            match = await adapter.getLastFinishedMatch(player);
+          } catch {
+            // ignore — fallback is best-effort
+          }
+        }
+
         const recommendations = match ? adapter.recommender.recommend(match) : [];
         const allyActions = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
         const plan = match ? (adapter.recommender.plan?.(match) ?? null) : null;
