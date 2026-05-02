@@ -125,3 +125,44 @@
   color: hsl(var(--severity-critical));
   border-color: hsl(var(--severity-critical) / 0.4);
 }
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: hsl(var(--muted));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+
+.kda {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.statSep {
+  color: hsl(var(--subtle));
+}
+
+.level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: hsl(var(--surface-3));
+  color: hsl(var(--foreground));
+  border-radius: 4px;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  border: 1px solid hsl(var(--border-strong));
+}

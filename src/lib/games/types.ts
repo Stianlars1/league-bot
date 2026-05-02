@@ -35,6 +35,39 @@ export interface Participant {
   summonerSpells?: string[]; // League: e.g. ["Flash", "Teleport"]
   runes?: { primary?: string; secondary?: string };
   items?: string[]; // Dota
+  stats?: ParticipantStats;
+}
+
+export interface ParticipantStats {
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  gold: number;
+  level: number;
+}
+
+export interface TeamScore {
+  kills: number;
+  towers: number;
+  drakes: number;
+  heralds: number;
+  barons: number;
+  inhibitors: number;
+}
+
+/**
+ * Live runtime stats. Available only when an upstream API supplies them
+ * (mock mode, or Live Client Data when the focused user is the player).
+ * Riot Spectator-v5 does NOT include any of this — the field is omitted
+ * for real Spectator-v5 fetches and the UI degrades gracefully.
+ */
+export interface LiveStats {
+  /** Tracked locally with a ticking timer between polls so it stays accurate. */
+  gameTimeSeconds: number;
+  /** Whether scores/KDA come from a real source or mock — UI shows a flag */
+  source: "mock" | "live-client" | "spectator-only";
+  scores: { ally: TeamScore; enemy: TeamScore };
 }
 
 export interface Match {
@@ -45,6 +78,8 @@ export interface Match {
   durationSeconds?: number;
   /** index 0 = ally team relative to focused player; 1 = enemy team */
   teams: [{ participants: Participant[] }, { participants: Participant[] }];
+  /** Optional live runtime data (KDA, scores, objectives, gold, levels) */
+  liveStats?: LiveStats;
   meta?: { raw?: unknown };
 }
 

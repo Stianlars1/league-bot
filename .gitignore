@@ -33,6 +33,7 @@
 review-*.png
 rotation-*.png
 scenario-*.png
+stats-*.png
 
 # debug
 npm-debug.log*

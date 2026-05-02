@@ -7,6 +7,7 @@ import type { GameId } from "@/lib/games/types";
 
 import { AllyActionBoard } from "./ally-action-board";
 import { Header } from "./header";
+import { LiveScoreBar } from "./live-score-bar";
 import styles from "./live-view.module.css";
 import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
@@ -55,13 +56,22 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               enemies={match.teams[1].participants}
             />
 
+            {/* Live score: kills, towers, drakes + ticking game timer */}
+            {match.liveStats ? (
+              <LiveScoreBar
+                key={`score-${match.matchId}`}
+                liveStats={match.liveStats}
+                fetchedAt={data.fetchedAt}
+              />
+            ) : null}
+
             {/* Status meta strip */}
             <section className={styles.statusStrip}>
               <Meta label="Match" value={`#${match.matchId}`} />
               <Meta label="Game" value={match.mode ?? "—"} />
-              <Meta label="Duration" value={formatDuration(match.durationSeconds)} />
               <Meta label="Region" value={(region ?? "—").toUpperCase()} />
               <Meta label="Polling" value={mock ? "5s" : "15s"} />
+              <Meta label="Stats source" value={statsSourceLabel(match.liveStats?.source)} />
               <Meta label="Updated" value={formatTimeAgo(data.fetchedAt)} />
             </section>
 
@@ -133,11 +143,11 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatDuration(seconds: number | undefined) {
-  if (!seconds || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function statsSourceLabel(source: "mock" | "live-client" | "spectator-only" | undefined) {
+  if (source === "mock") return "Mock data";
+  if (source === "live-client") return "Live Client API";
+  if (source === "spectator-only") return "Spectator (limited)";
+  return "—";
 }
 
 function formatTimeAgo(ts: number) {

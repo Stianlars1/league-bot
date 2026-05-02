@@ -177,6 +177,16 @@ export const leagueAdapter: GameAdapter = {
       startedAt: game.gameStartTime || undefined,
       durationSeconds: game.gameLength,
       teams: [{ participants: ally }, { participants: enemy }],
+      // Spectator-v5 doesn't expose live KDA / scores / objectives by Riot policy.
+      // We still surface gameTimeSeconds + a flag so the UI can degrade gracefully.
+      liveStats: {
+        gameTimeSeconds: game.gameLength,
+        source: "spectator-only",
+        scores: {
+          ally: { kills: 0, towers: 0, drakes: 0, heralds: 0, barons: 0, inhibitors: 0 },
+          enemy: { kills: 0, towers: 0, drakes: 0, heralds: 0, barons: 0, inhibitors: 0 },
+        },
+      },
       meta: { raw: game },
     };
   },

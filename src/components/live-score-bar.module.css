@@ -1,0 +1,181 @@
+.bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 28px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, hsl(var(--ally) / 0.06) 0%, transparent 35%, transparent 65%, hsl(var(--enemy) / 0.06) 100%);
+  pointer-events: none;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.sideRight {
+  align-items: flex-end;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.label[data-team="ally"] { color: hsl(var(--ally)); }
+.label[data-team="enemy"] { color: hsl(var(--enemy)); }
+
+.kills {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+}
+
+.kills[data-team="ally"] {
+  color: hsl(var(--ally));
+  text-shadow: 0 0 32px hsl(var(--ally) / 0.3);
+}
+
+.kills[data-team="enemy"] {
+  color: hsl(var(--enemy));
+  text-shadow: 0 0 32px hsl(var(--enemy) / 0.3);
+}
+
+.objectives {
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.obj {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.obj[data-active="true"] {
+  color: hsl(var(--foreground));
+}
+
+.objIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+  padding: 0 12px;
+}
+
+.dash {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 32px;
+  color: hsl(var(--subtle));
+  line-height: 1;
+}
+
+.timer {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted));
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: hsl(var(--data));
+  box-shadow: 0 0 10px hsl(var(--data));
+  animation: tick 1s ease-in-out infinite;
+}
+
+@keyframes tick {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.timerLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--subtle));
+}
+
+.unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px dashed hsl(var(--border-strong));
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  text-align: center;
+}
+
+.unavailable strong {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .bar {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px;
+  }
+  .sideRight {
+    align-items: flex-start;
+  }
+  .center {
+    order: -1;
+  }
+}

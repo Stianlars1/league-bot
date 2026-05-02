@@ -17,8 +17,11 @@ export function CharacterCard({ participant, side }: CharacterCardProps) {
   const c = participant.character;
   const tags = (c.tags ?? []).slice(0, 3);
 
+  const stats = participant.stats;
+
   return (
-    <div className={styles.card} data-side={side}>
+    <div className={styles.card} data-side={side} style={{ position: "relative" }}>
+      {stats ? <span className={styles.level}>Lv {stats.level}</span> : null}
       <div className={styles.portrait}>
         {c.imageUrl ? (
           <Image
@@ -42,6 +45,17 @@ export function CharacterCard({ participant, side }: CharacterCardProps) {
             <span style={{ color: damageColor(c.damageType) }}>{c.damageType.toUpperCase()}</span>
           ) : null}
         </div>
+        {stats ? (
+          <div className={styles.statsRow}>
+            <span className={styles.kda}>
+              {stats.kills}/{stats.deaths}/{stats.assists}
+            </span>
+            <span className={styles.statSep}>·</span>
+            <span>{stats.cs} cs</span>
+            <span className={styles.statSep}>·</span>
+            <span>{(stats.gold / 1000).toFixed(1)}k</span>
+          </div>
+        ) : null}
         {tags.length > 0 ? (
           <div className={styles.tags}>
             {tags.map((t) => (
