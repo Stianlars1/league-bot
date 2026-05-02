@@ -10,6 +10,7 @@ import { Header } from "./header";
 import { LaneMatchups } from "./lane-matchups";
 import { LiveScoreBar } from "./live-score-bar";
 import styles from "./live-view.module.css";
+import { MacroCallBanner } from "./macro-call-banner";
 import { MatchIntelStrip } from "./match-intel-strip";
 import { MatchPlanHero } from "./match-plan-hero";
 import { MatchView } from "./match-view";
@@ -52,6 +53,15 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
           <>
             {data.mock ? <MockBanner mock={data.mock} /> : null}
 
+            {/* The single most important tactical call right now */}
+            {data.intel?.macroCall ? (
+              <MacroCallBanner
+                key={`macro-${match.matchId}-${data.intel.macroCall.headline}`}
+                call={data.intel.macroCall}
+                fetchedAt={data.fetchedAt}
+              />
+            ) : null}
+
             {/* Hero card: enemy archetype + counter strategy + 3 top actions */}
             <MatchPlanHero
               key={`hero-${match.matchId}`}
@@ -68,12 +78,13 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               />
             ) : null}
 
-            {/* Win prob meter + objective spawn timers */}
+            {/* Win prob meter + objective spawn timers + history sparkline */}
             {data.intel ? (
               <MatchIntelStrip
                 key={`intel-${match.matchId}`}
                 intel={data.intel}
                 fetchedAt={data.fetchedAt}
+                matchId={match.matchId}
               />
             ) : null}
 

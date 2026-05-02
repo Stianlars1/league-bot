@@ -35,6 +35,7 @@ rotation-*.png
 scenario-*.png
 stats-*.png
 intel-*.png
+icons-*.png
 
 # debug
 npm-debug.log*

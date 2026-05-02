@@ -1,6 +1,7 @@
 "use client";
 
 import { useTickingTime } from "@/hooks/use-ticking-time";
+import { leagueIcons } from "@/lib/games/league/icons";
 import type { LiveStats, TeamScore } from "@/lib/games/types";
 
 import styles from "./live-score-bar.module.css";
@@ -76,18 +77,18 @@ export function LiveScoreBar({ liveStats, fetchedAt }: LiveScoreBarProps) {
 }
 
 function ObjectiveRow({ s, align }: { s: TeamScore; align?: "right" }) {
-  const order: { key: keyof TeamScore; icon: string; label: string }[] = [
-    { key: "towers", icon: "▲", label: "Towers" },
-    { key: "drakes", icon: "◆", label: "Drakes" },
-    { key: "heralds", icon: "✦", label: "Herald" },
-    { key: "barons", icon: "✸", label: "Baron" },
-    { key: "inhibitors", icon: "■", label: "Inhibs" },
+  const order: { key: keyof TeamScore; iconKind: Parameters<typeof leagueIcons.objectiveIcon>[0]; label: string }[] = [
+    { key: "towers", iconKind: "tower", label: "Towers" },
+    { key: "drakes", iconKind: "drake", label: "Drakes" },
+    { key: "heralds", iconKind: "herald", label: "Herald" },
+    { key: "barons", iconKind: "baron", label: "Baron" },
+    { key: "inhibitors", iconKind: "inhibitor", label: "Inhibs" },
   ];
   return (
     <div className={styles.objectives} style={{ justifyContent: align === "right" ? "flex-end" : "flex-start" }}>
       {order.map((o) => (
         <span key={o.key} className={styles.obj} data-active={s[o.key] > 0} title={o.label}>
-          <span className={styles.objIcon}>{o.icon}</span>
+          <span className={styles.objIcon}>{leagueIcons.objectiveIcon(o.iconKind)}</span>
           {s[o.key]}
         </span>
       ))}

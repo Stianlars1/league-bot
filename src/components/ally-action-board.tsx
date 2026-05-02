@@ -3,12 +3,31 @@
 import { motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 
+import { leagueIcons } from "@/lib/games/league/icons";
 import type { AllyAction } from "@/lib/games/types";
 
 import styles from "./ally-action-board.module.css";
 
 interface AllyActionBoardProps {
   actions: AllyAction[];
+}
+
+function ItemIcon({ name, large }: { name: string; large?: boolean }) {
+  const url = leagueIcons.itemIcon(name);
+  const cls = large ? styles.priorityIcon : styles.followIcon;
+  if (!url) {
+    return (
+      <span className={large ? styles.priorityNoIcon : styles.followIcon}>
+        {large ? "✦" : null}
+      </span>
+    );
+  }
+  const size = large ? 36 : 22;
+  return (
+    <span className={cls}>
+      <Image src={url} alt="" width={size} height={size} unoptimized sizes={`${size}px`} />
+    </span>
+  );
 }
 
 export function AllyActionBoard({ actions }: AllyActionBoardProps) {
@@ -58,7 +77,10 @@ export function AllyActionBoard({ actions }: AllyActionBoardProps) {
 
             <div className={styles.priority}>
               <span className={styles.priorityLabel}>Build first</span>
-              <div className={styles.priorityItem}>{a.priority.item}</div>
+              <div className={styles.priorityHead}>
+                <ItemIcon name={a.priority.item} large />
+                <div className={styles.priorityItem}>{a.priority.item}</div>
+              </div>
               <div className={styles.priorityReason}>{a.priority.reason}</div>
             </div>
 
@@ -66,12 +88,24 @@ export function AllyActionBoard({ actions }: AllyActionBoardProps) {
               <div className={styles.followBlock}>
                 <span className={styles.followLabel}>Then build</span>
                 <div className={styles.followList}>
-                  {a.followUps.map((it, i) => (
-                    <span key={`${it}-${i}`} className={styles.followItem}>
-                      <span className={styles.followIndex}>{i + 2}</span>
-                      {it}
-                    </span>
-                  ))}
+                  {a.followUps.map((it, i) => {
+                    const url = leagueIcons.itemIcon(it);
+                    return (
+                      <span
+                        key={`${it}-${i}`}
+                        className={`${styles.followItem} ${url ? "" : styles.followItemNoIcon}`}
+                      >
+                        {url ? (
+                          <span className={styles.followIcon}>
+                            <Image src={url} alt="" width={22} height={22} unoptimized sizes="22px" />
+                          </span>
+                        ) : (
+                          <span className={styles.followIndex}>{i + 2}</span>
+                        )}
+                        {it}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ) : null}

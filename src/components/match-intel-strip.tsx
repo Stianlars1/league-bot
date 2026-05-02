@@ -3,6 +3,8 @@
 import { motion } from "motion/react";
 
 import { useTickingTime } from "@/hooks/use-ticking-time";
+import { useWinProbHistory } from "@/hooks/use-win-prob-history";
+import { leagueIcons } from "@/lib/games/league/icons";
 import type { MatchIntel, ObjectiveTimer } from "@/lib/games/types";
 
 import styles from "./match-intel-strip.module.css";
@@ -10,13 +12,14 @@ import styles from "./match-intel-strip.module.css";
 interface MatchIntelStripProps {
   intel: MatchIntel;
   fetchedAt: number;
+  matchId: string;
 }
 
-const OBJECTIVE_LABELS: Record<ObjectiveTimer["kind"], { label: string; icon: string }> = {
-  drake: { label: "Drake", icon: "◆" },
-  herald: { label: "Herald", icon: "✦" },
-  baron: { label: "Baron", icon: "✸" },
-  elder: { label: "Elder", icon: "❖" },
+const OBJECTIVE_LABELS: Record<ObjectiveTimer["kind"], string> = {
+  drake: "Drake",
+  herald: "Herald",
+  baron: "Baron",
+  elder: "Elder Dragon",
 };
 
 function formatCountdown(seconds: number) {
@@ -28,17 +31,18 @@ function formatCountdown(seconds: number) {
   return `${m}:${rem.toString().padStart(2, "0")}`;
 }
 
-export function MatchIntelStrip({ intel, fetchedAt }: MatchIntelStripProps) {
+export function MatchIntelStrip({ intel, fetchedAt, matchId }: MatchIntelStripProps) {
   return (
     <section className={styles.strip}>
-      <WinProb intel={intel} />
+      <WinProb intel={intel} matchId={matchId} />
       <Objectives intel={intel} fetchedAt={fetchedAt} />
     </section>
   );
 }
 
-function WinProb({ intel }: { intel: MatchIntel }) {
+function WinProb({ intel, matchId }: { intel: MatchIntel; matchId: string }) {
   const { ally, enemy, drivers } = intel.winProbability;
+  const history = useWinProbHistory(matchId, ally);
   return (
     <div className={styles.winCard}>
       <div className={styles.winHead}>
@@ -77,6 +81,44 @@ function WinProb({ intel }: { intel: MatchIntel }) {
           ))}
         </div>
       ) : null}
+      {history.length >= 2 ? <Sparkline points={history} /> : null}
+    </div>
+  );
+}
+
+function Sparkline({ points }: { points: number[] }) {
+  const w = 200;
+  const h = 28;
+  const min = 0;
+  const max = 100;
+  const stepX = points.length > 1 ? w / (points.length - 1) : 0;
+  const path = points
+    .map((v, i) => {
+      const x = i * stepX;
+      const y = h - ((v - min) / (max - min)) * h;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const area = `${path} L${w},${h} L0,${h} Z`;
+  const last = points[points.length - 1];
+  const lastX = (points.length - 1) * stepX;
+  const lastY = h - ((last - min) / (max - min)) * h;
+
+  return (
+    <div className={styles.spark}>
+      <span className={styles.sparkLabel}>Trend</span>
+      <svg className={styles.sparkSvg} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--ally))" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="hsl(var(--ally))" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke="hsl(var(--border))" strokeDasharray="2 4" />
+        <path d={area} fill="url(#sparkFill)" />
+        <path d={path} fill="none" stroke="hsl(var(--ally))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={lastX} cy={lastY} r="2.5" fill="hsl(var(--ally))" />
+      </svg>
     </div>
   );
 }
@@ -104,7 +146,7 @@ function ObjectiveRow({ obj, fetchedAt }: { obj: ObjectiveTimer; fetchedAt: numb
   const sinceFetch = Math.floor((Date.now() - fetchedAt) / 1000);
   const remaining = Math.max(0, obj.inSeconds - sinceFetch);
 
-  const labelInfo = OBJECTIVE_LABELS[obj.kind];
+  const label = OBJECTIVE_LABELS[obj.kind];
   const status = remaining <= 0 ? "available" : obj.status;
 
   // satisfy lint — read inSec to avoid unused warnings if implementation evolves
@@ -112,9 +154,9 @@ function ObjectiveRow({ obj, fetchedAt }: { obj: ObjectiveTimer; fetchedAt: numb
 
   return (
     <div className={styles.objRow} data-status={status}>
-      <span className={styles.objIcon}>{labelInfo.icon}</span>
+      <span className={styles.objIcon}>{leagueIcons.objectiveIcon(obj.kind)}</span>
       <div>
-        <div className={styles.objLabel}>{labelInfo.label}</div>
+        <div className={styles.objLabel}>{label}</div>
         {obj.detail ? <div className={styles.objDetail}>{obj.detail}</div> : null}
       </div>
       <span className={styles.objCountdown} data-available={status === "available"}>

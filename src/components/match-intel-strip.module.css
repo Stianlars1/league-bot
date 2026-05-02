@@ -45,6 +45,27 @@
   letter-spacing: -0.025em;
 }
 
+.spark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sparkLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--subtle));
+}
+
+.sparkSvg {
+  flex: 1;
+  height: 28px;
+  overflow: visible;
+}
+
 .winAlly {
   font-size: 32px;
   font-weight: 700;

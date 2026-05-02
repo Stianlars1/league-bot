@@ -54,11 +54,20 @@ export interface LaneMatchup {
   summary: string;
 }
 
+export interface MacroCall {
+  headline: string;
+  body: string;
+  urgency: "high" | "medium" | "low";
+  tag: "group" | "siege" | "back" | "objective" | "splitpush" | "stall";
+  inSeconds?: number;
+}
+
 export interface MatchIntel {
   winProbability: WinProbability;
   objectives: ObjectiveTimer[];
   powerSpikes: PowerSpike[];
   laneMatchups: LaneMatchup[];
+  macroCall: MacroCall | null;
 }
 
 export type Side = "ally" | "enemy" | "blue" | "red" | "radiant" | "dire";

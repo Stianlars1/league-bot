@@ -333,13 +333,18 @@ export function computeLaneMatchups(match: Match): LaneMatchup[] {
 
 /* -------------------- Bundle -------------------- */
 
+import { computeMacroCall } from "./macro";
+
 export function computeMatchIntel(match: Match): MatchIntel | null {
   const winProbability = computeWinProbability(match);
   if (!winProbability) return null;
-  return {
+  const partial = {
     winProbability,
     objectives: computeObjectives(match),
     powerSpikes: computePowerSpikes(match),
     laneMatchups: computeLaneMatchups(match),
+    macroCall: null,
   };
+  partial.macroCall = computeMacroCall(match, partial) as never;
+  return partial;
 }
