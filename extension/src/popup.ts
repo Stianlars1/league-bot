@@ -3,9 +3,14 @@ import { getStoredToken, pairWithCode, unpair } from "./lib/pair";
 import type { PollTickInfo } from "./lib/poll";
 import { getRelayHost, setRelayHost } from "./lib/relay";
 import { loadRuntimeState } from "./lib/runtime-state";
-import { getItem, setItem } from "./lib/storage";
+import { getItem, removeItem, setItem } from "./lib/storage";
 
 const CERT_ACCEPTED_KEY = "certAcceptedAt";
+const PAIR_IN_PROGRESS_KEY = "pairInProgressAt";
+const PAIR_TAB_KEY = "pairTabId";
+// Pairing codes expire after 5 minutes server-side. Double the window so a
+// stale "pair in progress" flag can't trap the popup in the form view.
+const PAIR_IN_PROGRESS_TTL_MS = 10 * 60 * 1000;
 
 type View =
   | { kind: "loading" }
@@ -127,10 +132,15 @@ function renderPairForm(v: Extract<View, { kind: "pair-form" }>): void {
   setPill("waiting", "Awaiting code");
   const hostLabel = el("code", { text: `${new URL(v.pairUrl).host}/companion` });
   const copy = el("p", { className: "copy" }, [
-    text("We opened "),
+    text("Open the companion page on "),
     hostLabel,
-    text(" in a new tab. Generate a 6-character code there and paste it below."),
+    text(", generate a 6-character code, and paste it below. The popup closes when the new tab opens — click the toolbar icon to come back here and paste."),
   ]);
+  const openBtn = el("button", {
+    className: "btn-ghost",
+    text: "Open companion page →",
+    on: { click: () => void onOpenCompanionTab() },
+  });
   const input = el("input", {
     className: "input",
     attrs: {
@@ -159,13 +169,18 @@ function renderPairForm(v: Extract<View, { kind: "pair-form" }>): void {
   const cancelBtn = el("button", {
     className: "btn-ghost",
     text: "Cancel",
-    on: { click: () => setView({ kind: "unpaired" }) },
+    on: {
+      click: () => {
+        void clearPairInProgress({ closeTab: true });
+        setView({ kind: "unpaired" });
+      },
+    },
   });
   const row = el("div", { className: "row", attrs: { style: "justify-content: space-between;" } }, [
     cancelBtn,
     submitBtn,
   ]);
-  const card = el("div", { className: "card" }, [copy, input, errorNode, row]);
+  const card = el("div", { className: "card" }, [copy, openBtn, input, errorNode, row]);
   $body.appendChild(card);
   setTimeout(() => input.focus(), 0);
 }
@@ -319,10 +334,36 @@ async function renderHostMetaInto(node: HTMLElement): Promise<void> {
 // ---------- Actions ----------
 
 async function onStartPair(): Promise<void> {
+  // Render the pair-form first; the user clicks "Open companion page" inside
+  // the form to actually open the tab. Splitting "show form" from "open tab"
+  // is the whole point — a Chrome popup is destroyed the moment focus moves
+  // to a new tab, so any view we transition into during chrome.tabs.create
+  // never gets seen.
   const host = await getRelayHost();
   const pairUrl = `${host}/companion`;
-  await chrome.tabs.create({ url: pairUrl });
   setView({ kind: "pair-form", pairUrl });
+}
+
+async function onOpenCompanionTab(): Promise<void> {
+  // Mark in-progress BEFORE chrome.tabs.create — that call steals focus and
+  // tears the popup down, so any awaits afterwards are best-effort.
+  await setItem(PAIR_IN_PROGRESS_KEY, Date.now());
+  // Close any tab a previous attempt left around so we don't pile up orphans.
+  const prevId = await getItem<number>(PAIR_TAB_KEY);
+  if (typeof prevId === "number") chrome.tabs.remove(prevId).catch(() => {});
+  const host = await getRelayHost();
+  const pairUrl = `${host}/companion`;
+  const tab = await chrome.tabs.create({ url: pairUrl });
+  if (typeof tab.id === "number") await setItem(PAIR_TAB_KEY, tab.id);
+}
+
+async function clearPairInProgress(opts: { closeTab: boolean }): Promise<void> {
+  if (opts.closeTab) {
+    const tabId = await getItem<number>(PAIR_TAB_KEY);
+    if (typeof tabId === "number") chrome.tabs.remove(tabId).catch(() => {});
+  }
+  await removeItem(PAIR_IN_PROGRESS_KEY);
+  await removeItem(PAIR_TAB_KEY);
 }
 
 async function onSubmitPair(): Promise<void> {
@@ -335,6 +376,7 @@ async function onSubmitPair(): Promise<void> {
     setView({ ...view, submitting: false, error: result.error });
     return;
   }
+  await clearPairInProgress({ closeTab: true });
   chrome.runtime.sendMessage({ type: "ensure-poll" }).catch(() => {});
   await routeAfterPair();
 }
@@ -367,6 +409,10 @@ async function openPaired(): Promise<void> {
 
 async function onUnpair(): Promise<void> {
   await unpair();
+  // Defensive: a normal pair-success path already cleared these, but if the
+  // user somehow held both a stored token and a stale in-progress flag, wipe
+  // both together so the next pair attempt starts clean.
+  await clearPairInProgress({ closeTab: false });
   chrome.runtime.sendMessage({ type: "stop-poll" }).catch(() => {});
   liveTickInfo = null;
   setView({ kind: "unpaired" });
@@ -416,6 +462,24 @@ async function bootstrap(): Promise<void> {
 
   const token = await getStoredToken();
   if (!token) {
+    // If a pair flow is mid-flight (user clicked "Open companion page" and
+    // the popup closed when the new tab took focus), restore the pair-form
+    // view so they have an input to paste the code into. Without this, the
+    // popup would land back on "Not paired" and the user would have nowhere
+    // to put the code they just generated.
+    const inProgressAt = await getItem<number>(PAIR_IN_PROGRESS_KEY);
+    if (
+      typeof inProgressAt === "number" &&
+      Date.now() - inProgressAt < PAIR_IN_PROGRESS_TTL_MS
+    ) {
+      const host = await getRelayHost();
+      setView({ kind: "pair-form", pairUrl: `${host}/companion` });
+      return;
+    }
+    if (typeof inProgressAt === "number") {
+      // Stale flag — wipe it so the unpaired view isn't shadowed next time.
+      await clearPairInProgress({ closeTab: false });
+    }
     setView({ kind: "unpaired" });
     return;
   }
