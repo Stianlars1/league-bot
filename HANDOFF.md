@@ -192,9 +192,9 @@ resolved before code:
 ## What's NOT done yet
 
 ### Highest leverage to do next
-1. **In-browser smoke test of the extension** in Chrome + Edge + Firefox. Use
-   the load-unpacked instructions in `extension/README.md`. Confirm the cert
-   dance + the polling architecture both work in practice.
+1. **In-browser smoke test of the extension.** Chrome on macOS done in
+   Session 5 (popup + page bugs surfaced and fixed). Edge + Firefox not yet
+   tested. Same load-unpacked instructions in `extension/README.md`.
 2. **Production hostname find/replace.** When the production deployment
    exists, swap `https://counter.app` in:
    - `extension/manifest/manifest.chrome.json` (host_permissions)
@@ -283,3 +283,90 @@ src/components/header.tsx                       (viaCompanion prop + "via Compan
 src/components/header.module.css                (data-via-companion pill style)
 HANDOFF.md                                      (this file)
 ```
+
+## Session 5 (2026-05-03 evening) — extension popup + companion page bug fixes
+
+In-browser Chrome-on-macOS smoke test surfaced one real popup bug and three
+secondary issues on the `/companion` page. All four fixed and verified.
+
+### What was broken
+
+1. **Popup pair-form view never appeared.** Clicking "Pair this browser →"
+   called `chrome.tabs.create(...)` and *then* `setView({ kind: "pair-form" })`
+   — but Chrome destroys the popup the instant focus shifts to the new tab,
+   so the pair-form render never reached the screen. Reopening the popup
+   landed back on "Not paired" with no input field anywhere.
+2. **`/companion` page never acknowledged successful pairings.** The page's
+   only "you're paired" signal was a frame arriving over SSE, which doesn't
+   happen unless a League match is running. Result: the dead pairing code
+   kept counting down for 5 minutes after the extension already claimed it.
+3. **SSE error handler was loud and persistent.** `onerror` set "Stream
+   interrupted — reconnecting" on every transient error and never cleared
+   it, so a single Next.js HMR bounce stuck red text on screen permanently.
+4. **Two strings on `/companion` assumed the only consumer was the CLI.**
+   Disclosure body and per-code hint mentioned `pnpm companion:dev` as if
+   the extension didn't exist.
+
+### What shipped (two commits, pushed to origin)
+
+**`aab360b` — fix(extension): preserve pair-form view across popup teardown**
+- Split "show form" from "open tab": clicking "Pair this browser →" now only
+  renders the pair-form. Inside that form is a new "Open companion page →"
+  button — clicking *that* writes `pairInProgressAt` + the new tab id to
+  `chrome.storage.local` *before* opening the tab.
+- `bootstrap()` restores the pair-form view if a fresh (<10min)
+  `pairInProgressAt` flag is present. Cancel clears the flag + closes the
+  tab; successful pair clears the flag + closes the tab; Unpair clears the
+  flag.
+- Files: `extension/src/popup.ts` only.
+
+**`be91420` — fix(companion): /companion page acknowledges pair + quieter SSE**
+- New `notifyClaimed`/`subscribeClaim`/`isClaimed` channel in
+  `src/lib/companion/store.ts`. `claim/route.ts` calls `notifyClaimed(token)`
+  after `consumePairing` succeeds. `stream/route.ts` subscribes to claim
+  notifications and replays `event: claimed` on connect for late subscribers.
+- `companion-panel.tsx` handles the new `claimed` SSE event: clears
+  `code`/`codeExpiresAt`, persists token to localStorage, holds status at
+  `"waiting"`.
+- Quieter EventSource error handling: clear on `onopen`, only surface error
+  when `readyState === EventSource.CLOSED`. Eliminates the "Stream
+  interrupted" noise from normal HMR reconnects.
+- Disclosure body and per-code hint copy updated to acknowledge both
+  extension and CLI consumers.
+
+### Verified end-to-end on Chrome / macOS
+
+- Pair flow: form survives popup-close, extension claims, `/companion` page
+  drops the codeBlock immediately after claim.
+- SSE quietness: stop dev server → no error on `/companion` page; restart →
+  silently reconnects.
+- Curl smoke for the new claim broadcast: pair → subscribe → claim → SSE
+  emits `event: claimed`. Late-subscribe race (claim before subscribe) also
+  works via `isClaimed` replay.
+- `pnpm exec tsc --noEmit`: clean (root + extension).
+
+### NOT verified this session
+
+- Same flow in Edge / Firefox. Code paths (offscreen vs event-page) differ;
+  Firefox in particular hasn't been touched this round.
+- Cert-trust dance with an actual running League match (no game on the test
+  Mac).
+
+## Pending items — per-item blockers (as of session 5)
+
+Per RULES.md none of these were silently advanced. Each needs your input.
+
+| Item | What it needs from you |
+|---|---|
+| Production hostname swap | The actual production URL. Today `https://counter.app` is a placeholder in `extension/manifest/manifest.{chrome,firefox}.json` + `extension/src/lib/relay.ts`. If `counter.app` IS the real URL, the swap is a no-op — confirm and I'll remove the TODOs. |
+| Real icon art | Brand direction. Current PNGs are Pillow-generated dark cyan square + dot (matches the in-popup brand-mark CSS). Options: (a) commission real art, (b) AI-generate from a brief, (c) iterate from current placeholder, (d) ship placeholder to private/internal distribution and defer. |
+| Store accounts | User-action: Chrome Web Store ($5, Google account), Firefox AMO (free), Edge Add-ons (free, requires Microsoft Partner Center). Order of registration is your call. |
+| Production storage swap | Architectural pick: Vercel Marketplace Postgres vs Upstash Redis — both noted in `docs/companion-app.md`. Both need credentials + schema. |
+| Edge / Firefox smoke test | User action: load `dist/firefox/manifest.json` as temporary add-on at `about:debugging`; load `dist/chrome/` in Edge via `edge://extensions`. No code changes likely needed; surface bugs the same way. |
+| `extension/README.md` dev-override copy | Tells you to use the SW DevTools console for `relayHost` overrides. The popup's Advanced disclosure does the same thing now; the README is stale. Pure docs fix. Flagged not fixed. |
+| Extension popup relay-down indicator | Currently the popup says "Paired and watching" even if the relay is unreachable, because no game = no push attempts = no failure signal. Adding a periodic relay-health probe = new background-loop concern + new server route. Flagged not built. |
+| **Older queue (unchanged)** | |
+| #3 Clickable history → `/match/[game]/[matchId]` route | Scope decision: how the URL slug encodes the match (region prefix? riot match-id format?), which existing component to lift into the page. Match-V5-by-ID already wired in `src/lib/games/league/riot-api.ts`. |
+| #5 WoW game support | Major new feature. Battle.net app registration + OAuth credentials, decision on Raider.IO API key vs anonymous, decision on whether `GameId` adds `\| "wow"` or a parallel system. |
+| #6 `pnpm refresh-key` helper | Adds Playwright dependency. Decisions: where to store the rotated key (`.env.local` only? push to Vercel?), whether to also apply for Personal Application Key in parallel. |
+| #9 Mirror Community Dragon assets | New build/cron job. Decisions: refresh cadence, where to host (`/public/assets/lol/` vs blob storage), what subset of CDragon to mirror. |
