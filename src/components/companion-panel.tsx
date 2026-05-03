@@ -104,8 +104,30 @@ export function CompanionPanel() {
     es.addEventListener("hello", () => {
       setStatus((s) => (s === "live" ? s : "waiting"));
     });
+    // Server tells us the moment the companion claims the pairing code. Drop
+    // the "paste this code" UI so a paired-but-no-game-running session doesn't
+    // sit on a misleading code countdown for 5 minutes.
+    es.addEventListener("claimed", () => {
+      setCode(null);
+      setCodeExpiresAt(null);
+      setStatus((s) => (s === "live" ? s : "waiting"));
+      if (!persistedRef.current && typeof window !== "undefined") {
+        window.localStorage.setItem(TOKEN_KEY, tok);
+        persistedRef.current = true;
+      }
+    });
+    es.onopen = () => {
+      // Successful (re)connect — drop any stale "interrupted" message.
+      setError(null);
+    };
     es.onerror = () => {
-      setError("Stream interrupted — reconnecting");
+      // EventSource auto-reconnects when readyState is CONNECTING; only
+      // surface an error if it's actually permanently CLOSED. Treating every
+      // transient error as user-visible spammed the page with red text on
+      // every Next.js HMR bounce.
+      if (es.readyState === EventSource.CLOSED) {
+        setError("Stream closed — try unpairing and pairing again.");
+      }
     };
   }, []);
 
@@ -183,18 +205,17 @@ export function CompanionPanel() {
           </summary>
           <div className={styles.devBody}>
             <p className={styles.hint}>
-              The Phase 0 companion is a Node script you run from a terminal.
-              Clone the repo, then run{" "}
-              <code>pnpm install &amp;&amp; pnpm companion:dev</code> from the
-              repo root. Click below to generate a pairing code and paste it into
-              the script when prompted.
+              Generate a 6-character code below, then paste it into the
+                Counter Companion browser extension popup, or into the{" "}
+              <code>pnpm companion:dev</code> CLI prompt if you&apos;re running
+              the dev script. Codes are single-use and expire after 5 minutes.
             </p>
             <button type="button" className={styles.primary} onClick={startPairing}>
               Generate pairing code →
             </button>
             <p className={styles.hintMuted}>
-              Source: <code>companion/poll.ts</code> · architecture in{" "}
-              <code>docs/companion-app.md</code>.
+              Source: <code>companion/poll.ts</code> + <code>extension/</code> ·
+              architecture in <code>docs/companion-app.md</code>.
             </p>
           </div>
         </details>
@@ -208,7 +229,8 @@ export function CompanionPanel() {
             {codeExpiresAt && !codeExpired
               ? `Expires ${fmtCountdown(codeExpiresAt, now)}`
               : "Expired — generate a new one"}{" "}
-            · paste into the running <code>pnpm companion:dev</code> prompt
+            · paste into your Counter Companion (extension popup or{" "}
+            <code>pnpm companion:dev</code> prompt)
           </div>
         </div>
       ) : null}

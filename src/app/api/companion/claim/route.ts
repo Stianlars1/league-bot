@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { notifyClaimed } from "@/lib/companion/store";
 import { consumePairing } from "@/lib/companion/pair-codes";
 
 export const runtime = "nodejs";
@@ -29,5 +30,8 @@ export async function POST(req: Request) {
   if (!token) {
     return NextResponse.json({ error: "Invalid or expired pairing code" }, { status: 404 });
   }
+  // Tell the web subscriber (if any) that the code just got claimed, so it can
+  // drop the "paste this code" UI and switch to "waiting for frames".
+  notifyClaimed(token);
   return NextResponse.json({ token });
 }

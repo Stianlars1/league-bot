@@ -1,4 +1,4 @@
-import { getLatestFrame, subscribe } from "@/lib/companion/store";
+import { getLatestFrame, isClaimed, subscribe, subscribeClaim } from "@/lib/companion/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +36,13 @@ export async function GET(req: Request) {
       if (latest) send("frame", latest);
       else send("hello", { paired: false });
 
+      // If the companion has already claimed this token (race-immune for late
+      // subscribers), tell the page now so it can drop the "paste the code"
+      // UI on first connect.
+      if (isClaimed(token)) send("claimed", { token });
+
       const unsubscribe = subscribe(token, (frame) => send("frame", frame));
+      const unsubscribeClaim = subscribeClaim(token, () => send("claimed", { token }));
 
       const heartbeat = setInterval(() => {
         try {
@@ -49,6 +55,7 @@ export async function GET(req: Request) {
       const close = () => {
         clearInterval(heartbeat);
         unsubscribe();
+        unsubscribeClaim();
         try {
           controller.close();
         } catch {
