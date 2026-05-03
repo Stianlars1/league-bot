@@ -11,7 +11,10 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "companion:dev": "tsx companion/poll.ts"
+    "companion:dev": "tsx companion/poll.ts",
+    "extension:install": "cd extension && pnpm install --ignore-workspace",
+    "extension:build": "cd extension && pnpm build",
+    "extension:watch": "cd extension && pnpm watch"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
