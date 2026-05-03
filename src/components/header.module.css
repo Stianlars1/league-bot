@@ -103,6 +103,31 @@
   color: hsl(var(--muted));
 }
 
+.navLink {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  padding: 6px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+
+.navLink:hover {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border-strong));
+}
+
+.navLinkBadge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: hsl(var(--data));
+  margin-left: 4px;
+}
+
 .live {
   display: inline-flex;
   align-items: center;
@@ -111,6 +136,17 @@
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
   color: hsl(var(--foreground));
+}
+
+.live[data-via-companion] {
+  border-color: hsl(var(--data) / 0.5);
+  color: hsl(var(--data));
+  background: hsl(var(--data) / 0.08);
+}
+
+.live[data-via-companion] .liveDot {
+  background: hsl(var(--data));
+  box-shadow: 0 0 14px hsl(var(--data) / 0.9);
 }
 
 .liveDot {

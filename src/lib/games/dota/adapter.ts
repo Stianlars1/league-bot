@@ -150,13 +150,13 @@ export const dotaAdapter: GameAdapter = {
     try {
       game = await liveMatchByAccount(accountId);
     } catch (err) {
-      // Surface a clean message instead of crashing when Stratz isn't configured
-      if (err instanceof StratzKeyMissingError) {
-        throw new Error(
-          "Dota live data requires a Stratz API key. Add STRATZ_API_KEY in .env.local — see README.",
-        );
-      }
-      throw err;
+      // STRATZ is optional and historically flaky for indie devs (login broken,
+      // no public key issuance for some users). Treat any failure as "no live
+      // match" — the user still gets the static catalog and recommender.
+      // True realtime ships via Counter Companion + Dota GSI in Phase 1.
+      if (err instanceof StratzKeyMissingError) return null;
+      console.warn("[dota] live fetch failed, falling through to no-live:", err);
+      return null;
     }
     if (!game) return null;
 

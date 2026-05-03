@@ -1,0 +1,10 @@
+{
+  "name": "counter-companion",
+  "version": "0.0.0-phase0",
+  "private": true,
+  "description": "Counter Companion - Phase 0 Node poller for Riot's Live Client Data API",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx poll.ts"
+  }
+}

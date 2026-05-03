@@ -54,6 +54,58 @@
   line-height: 1.5;
 }
 
+.ledeLink {
+  color: hsl(var(--data));
+  text-decoration: none;
+  border-bottom: 1px solid hsl(var(--data) / 0.4);
+  transition: border-color 200ms var(--ease-out);
+}
+
+.ledeLink:hover {
+  border-bottom-color: hsl(var(--data));
+}
+
+.ctaStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.companionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: hsl(var(--surface) / 0.5);
+  border: 1px dashed hsl(var(--data) / 0.4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted));
+  text-decoration: none;
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.companionRow:hover {
+  border-color: hsl(var(--data));
+  background: hsl(var(--data) / 0.05);
+  color: hsl(var(--foreground));
+}
+
+.companionPill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 3px 7px;
+  background: hsl(var(--data) / 0.12);
+  color: hsl(var(--data));
+  border: 1px solid hsl(var(--data) / 0.4);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 .tabs {
   display: inline-flex;
   padding: 4px;

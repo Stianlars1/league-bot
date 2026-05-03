@@ -30,7 +30,13 @@ interface LiveViewProps {
 }
 
 export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps) {
-  const { data, error, isLoading, nullStreak } = useLiveMatch({ game, id, region, name, mock });
+  const { data, error, isLoading, nullStreak, viaCompanion } = useLiveMatch({
+    game,
+    id,
+    region,
+    name,
+    mock,
+  });
   const match = data?.match ?? null;
   const isPostGame = match?.liveStats?.source === "post-game";
   const status: "live" | "searching" | "error" =
@@ -40,9 +46,15 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
 
   const gameLabel = game === "league" ? "League of Legends" : "Dota 2";
 
+  const headerMeta = mock
+    ? "Polling every 5s · demo"
+    : viaCompanion
+      ? "Streaming · 1Hz from your machine"
+      : "Polling every 15s";
+
   return (
     <>
-      <Header status={headerStatus} meta={mock ? "Polling every 5s · demo" : "Polling every 15s"} />
+      <Header status={headerStatus} meta={headerMeta} viaCompanion={viaCompanion} />
       <main className={styles.shell}>
         <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link href="/">← Home</Link>
@@ -121,7 +133,7 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               <Meta label="Match" value={`#${match.matchId}`} />
               <Meta label="Game" value={match.mode ?? "—"} />
               <Meta label="Region" value={(region ?? "—").toUpperCase()} />
-              <Meta label="Polling" value={mock ? "5s" : "15s"} />
+              <Meta label="Polling" value={mock ? "5s" : viaCompanion ? "live SSE" : "15s"} />
               <Meta label="Stats source" value={statsSourceLabel(match.liveStats?.source)} />
               <Meta label="Updated" value={formatTimeAgo(data.fetchedAt)} />
             </section>

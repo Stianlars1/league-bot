@@ -14,13 +14,15 @@ const GAMES: { id: Game; label: string; hint: string; caveat: string }[] = [
     id: "league",
     label: "League of Legends",
     hint: 'Riot ID — e.g. "Faker#KR1"  (append "(euw1)" to override region)',
-    caveat: "Riot's Spectator API has a built-in ~3 minute delay. Recommendations unlock once data goes live.",
+    caveat:
+      "Cloud-only: Riot's Spectator API runs ~3 min behind and is being deprecated. Counter Companion (in development) is the realtime path.",
   },
   {
     id: "dota",
     label: "Dota 2",
     hint: 'Steam account ID (32-bit) or full SteamID64 — e.g. "108108108"',
-    caveat: "Stratz live coverage is best-effort — some public matches may not appear immediately.",
+    caveat:
+      "Cloud-only: post-game match data via OpenDota. Counter Companion (in development) is the realtime path.",
   },
 ];
 
@@ -106,9 +108,13 @@ export function GamePicker() {
         transition={{ duration: 0.5, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}
         className={styles.lede}
       >
-        Drop in your Riot ID or Steam account. We pull the live match, read the enemy
-        composition, and tell your team exactly which items, runes, and strategies
-        actually beat what you&apos;re facing — updated every 15 seconds.
+        Drop in a Riot ID or Steam account and Counter pulls everything from
+        public APIs (Spectator runs ~3 min behind by Riot policy — that&apos;s
+        the cloud&apos;s ceiling).{" "}
+        <Link href="/companion" className={styles.ledeLink}>
+          Counter Companion
+        </Link>{" "}
+        is the in-development realtime path.
       </motion.p>
 
       <div className={styles.tabs} role="tablist" aria-label="Select game">
@@ -172,14 +178,21 @@ export function GamePicker() {
         {error ? <div className={styles.error}>{error}</div> : null}
       </form>
 
-      <Link
-        href="/live/league/sample?mock=1&name=Sample+Match"
-        className={styles.sampleRow}
-      >
-        <span style={{ color: "hsl(var(--data))" }}>►</span>
-        <span>Don&apos;t have a Riot ID handy? Open the sample match.</span>
-        <span className={styles.sampleArrow}>→</span>
-      </Link>
+      <div className={styles.ctaStack}>
+        <Link href="/companion" className={styles.companionRow}>
+          <span className={styles.companionPill}>DEV</span>
+          <span>Counter Companion · realtime path, in development.</span>
+          <span className={styles.sampleArrow}>→</span>
+        </Link>
+        <Link
+          href="/live/league/sample?mock=1&name=Sample+Match"
+          className={styles.sampleRow}
+        >
+          <span style={{ color: "hsl(var(--data))" }}>►</span>
+          <span>Don&apos;t have a Riot ID handy? Open the sample match.</span>
+          <span className={styles.sampleArrow}>→</span>
+        </Link>
+      </div>
 
       <div className={styles.featureGrid}>
         <Feature label="Damage profile" body="Counts AD/AP/Magical/Physical and surfaces the right resist items first." />
