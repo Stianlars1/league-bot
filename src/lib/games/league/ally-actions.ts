@@ -1,4 +1,4 @@
-import type { AllyAction, Match, MatchPlan } from "../types";
+import type { AllyAction, Match, MatchPlan, Participant, Severity } from "../types";
 import { getChampMeta, type LeagueChampMeta } from "./data";
 
 /**
@@ -7,10 +7,95 @@ import { getChampMeta, type LeagueChampMeta } from "./data";
  *   1. The enemy's dominant damage profile (AP / AD)
  *   2. Specific tags in the enemy comp (healing, CC, burst, engage, tanks)
  *   3. The ally's own archetype (squishy carries vs frontline)
+ *   4. Live KDA / level / gold per enemy — "top threat" picks favour the
+ *      most-fed enemy with the matching tag, not the first one in array order.
  *
  * The recommender produces the "team-wide" advice; this module produces the
  * "what should I personally do RIGHT NOW" advice.
  */
+
+// ============================================================================
+// Threat evaluation — pairs static meta with live participant stats so
+// downstream rules can prefer the most-fed enemy with a given tag and bump
+// severity / rationale strings accordingly. Shared with recommender.ts.
+// ============================================================================
+
+export interface Threat {
+  meta: LeagueChampMeta;
+  participant: Participant;
+  /** (kills + assists) / max(1, deaths). 0 when no live stats yet. */
+  kdaRatio: number;
+  /** Heuristic: positive KDA ratio AND meaningful kill participation. */
+  fed: boolean;
+  /** Sort key, higher = more dangerous. 0 when no live stats. */
+  threatScore: number;
+}
+
+/**
+ * Build a Threat per enemy that has matching meta. Threats without live
+ * stats get score 0 — they sort to the bottom but are still emitted so
+ * draft-only paths (Spectator-V5) keep working.
+ */
+export function evaluateThreats(
+  enemies: Participant[],
+  metas: LeagueChampMeta[],
+): Threat[] {
+  const byId = new Map(enemies.map((p) => [p.character.id, p]));
+  const out: Threat[] = [];
+  for (const meta of metas) {
+    const participant = byId.get(meta.id);
+    if (!participant) continue;
+    const stats = participant.stats;
+    if (!stats) {
+      out.push({ meta, participant, kdaRatio: 0, fed: false, threatScore: 0 });
+      continue;
+    }
+    const ratio = (stats.kills + stats.assists) / Math.max(1, stats.deaths);
+    const fed = ratio >= 2.5 && stats.kills + stats.assists >= 5;
+    // Blend kill/assist participation, death penalty, and level lead. Gold is
+    // an estimate for non-active players in the Live Client path, so we
+    // weight it lightly here — KDA is the truer signal moment-to-moment.
+    const threatScore =
+      stats.kills * 3 + stats.assists - stats.deaths * 2 + stats.level / 4 + stats.gold / 1500;
+    out.push({ meta, participant, kdaRatio: ratio, fed, threatScore });
+  }
+  return out;
+}
+
+function prettifyName(id: string) {
+  return id.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+/** "Soraka (4/0/12 — fed), Yuumi (1/2/8)" — KDA appended when stats present. */
+export function formatThreats(threats: Threat[], opts: { withKDA?: boolean } = {}): string {
+  const sorted = [...threats].sort((a, b) => b.threatScore - a.threatScore);
+  return sorted
+    .map((t) => {
+      const name = prettifyName(t.meta.id);
+      if (!opts.withKDA || !t.participant.stats) return name;
+      const s = t.participant.stats;
+      return `${name} (${s.kills}/${s.deaths}/${s.assists}${t.fed ? " — fed" : ""})`;
+    })
+    .join(", ");
+}
+
+export function anyFed(threats: Threat[]): boolean {
+  return threats.some((t) => t.fed);
+}
+
+/** Bump severity by one step when `when` is true. low→med→high→critical. */
+export function bumpSeverity(severity: Severity, when: boolean): Severity {
+  if (!when) return severity;
+  if (severity === "low") return "medium";
+  if (severity === "medium") return "high";
+  return "critical";
+}
+
+/** Pick the top-scoring threat from a filtered list, returning its meta. */
+function topMetaOf(threats: Threat[]): LeagueChampMeta | undefined {
+  if (threats.length === 0) return undefined;
+  return threats.reduce((a, b) => (b.threatScore > a.threatScore ? b : a)).meta;
+}
 
 interface EnemyProfile {
   ap: number;
@@ -30,44 +115,33 @@ interface EnemyProfile {
   ccThreat?: LeagueChampMeta;
 }
 
-function profile(enemy: LeagueChampMeta[]): EnemyProfile {
+function profile(threats: Threat[]): EnemyProfile {
   const p: EnemyProfile = {
     ap: 0, ad: 0, healing: 0, cc: 0, burst: 0, engage: 0, tanks: 0, shields: 0, scaling: 0,
   };
-  for (const m of enemy) {
-    if (m.damageType === "ap") {
-      p.ap++;
-      if (!p.apTopThreat) p.apTopThreat = m;
-    }
-    if (m.damageType === "ad") {
-      p.ad++;
-      if (!p.adTopThreat) p.adTopThreat = m;
-    }
-    if (m.tags.includes("healing")) {
-      p.healing++;
-      if (!p.healerThreat) p.healerThreat = m;
-    }
-    if (m.tags.includes("cc")) {
-      p.cc++;
-      if (!p.ccThreat) p.ccThreat = m;
-    }
-    if (m.tags.includes("burst")) {
-      p.burst++;
-      if (!p.burstThreat) p.burstThreat = m;
-    }
-    if (m.tags.includes("engage")) {
-      p.engage++;
-      if (!p.engageThreat) p.engageThreat = m;
-    }
+  for (const t of threats) {
+    const m = t.meta;
+    if (m.damageType === "ap") p.ap++;
+    if (m.damageType === "ad") p.ad++;
+    if (m.tags.includes("healing")) p.healing++;
+    if (m.tags.includes("cc")) p.cc++;
+    if (m.tags.includes("burst")) p.burst++;
+    if (m.tags.includes("engage")) p.engage++;
     if (m.tags.includes("tank")) p.tanks++;
     if (m.tags.includes("shielding")) p.shields++;
     if (m.tags.includes("scaling")) p.scaling++;
   }
+  // Top-threat picks: most-fed enemy with the matching tag, not first-in-list.
+  // When no live stats exist (Spectator-V5 path) all threatScores are 0 and
+  // ties resolve to the original Map iteration order — same as the old
+  // "first match wins" behaviour, so this stays back-compat.
+  p.apTopThreat = topMetaOf(threats.filter((t) => t.meta.damageType === "ap"));
+  p.adTopThreat = topMetaOf(threats.filter((t) => t.meta.damageType === "ad"));
+  p.healerThreat = topMetaOf(threats.filter((t) => t.meta.tags.includes("healing")));
+  p.ccThreat = topMetaOf(threats.filter((t) => t.meta.tags.includes("cc")));
+  p.burstThreat = topMetaOf(threats.filter((t) => t.meta.tags.includes("burst")));
+  p.engageThreat = topMetaOf(threats.filter((t) => t.meta.tags.includes("engage")));
   return p;
-}
-
-function prettifyName(id: string) {
-  return id.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
 interface BuildResult {
@@ -194,7 +268,7 @@ function buildForJungler(p: EnemyProfile): BuildResult {
   };
 }
 
-function pickWatchOut(allyMeta: LeagueChampMeta | undefined, p: EnemyProfile, enemy: LeagueChampMeta[]): AllyAction["watchOut"] | undefined {
+function pickWatchOut(allyMeta: LeagueChampMeta | undefined, p: EnemyProfile, threats: Threat[]): AllyAction["watchOut"] | undefined {
   if (!allyMeta) return undefined;
 
   const archetype = allyMeta.archetype;
@@ -265,7 +339,7 @@ function pickWatchOut(allyMeta: LeagueChampMeta | undefined, p: EnemyProfile, en
       reason: "Their sustain anchor — kill or peel them off",
     };
   }
-  const top = enemy[0];
+  const top = topMetaOf(threats);
   if (top) {
     return {
       championId: top.id,
@@ -278,11 +352,13 @@ function pickWatchOut(allyMeta: LeagueChampMeta | undefined, p: EnemyProfile, en
 
 export function getAllyActions(match: Match): AllyAction[] {
   const allies = match.teams[0].participants;
-  const enemyMetas = match.teams[1].participants
+  const enemies = match.teams[1].participants;
+  const enemyMetas = enemies
     .map((p) => getChampMeta(p.character.id))
     .filter((m): m is LeagueChampMeta => Boolean(m));
 
-  const p = profile(enemyMetas);
+  const threats = evaluateThreats(enemies, enemyMetas);
+  const p = profile(threats);
 
   return allies.map((ally) => {
     const meta = getChampMeta(ally.character.id);
@@ -309,16 +385,18 @@ export function getAllyActions(match: Match): AllyAction[] {
       imageUrl: ally.character.imageUrl,
       priority: build.priority,
       followUps: build.followUps,
-      watchOut: pickWatchOut(meta, p, enemyMetas),
+      watchOut: pickWatchOut(meta, p, threats),
     } satisfies AllyAction;
   });
 }
 
 export function getMatchPlan(match: Match): MatchPlan {
-  const enemyMetas = match.teams[1].participants
+  const enemies = match.teams[1].participants;
+  const enemyMetas = enemies
     .map((p) => getChampMeta(p.character.id))
     .filter((m): m is LeagueChampMeta => Boolean(m));
-  const p = profile(enemyMetas);
+  const threats = evaluateThreats(enemies, enemyMetas);
+  const p = profile(threats);
 
   // Identify dominant traits for the headline
   const traits: string[] = [];

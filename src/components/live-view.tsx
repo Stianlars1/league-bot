@@ -161,6 +161,7 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
               <MatchHistoryStrip
                 key={`history-${match.matchId}`}
                 matches={data.recentMatches}
+                gameId={game}
               />
             ) : null}
           </>
@@ -242,7 +243,7 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
 
         {/* Recent matches: show in searching/error state too if available */}
         {status !== "live" && data?.recentMatches && data.recentMatches.length > 0 ? (
-          <MatchHistoryStrip matches={data.recentMatches} />
+          <MatchHistoryStrip matches={data.recentMatches} gameId={game} />
         ) : null}
       </main>
     </>

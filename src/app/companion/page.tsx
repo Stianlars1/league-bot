@@ -6,9 +6,9 @@ import { Header } from "@/components/header";
 import styles from "./companion.module.css";
 
 export const metadata: Metadata = {
-  title: "Counter Companion · Realtime data, owned end-to-end",
+  title: "Peeked Companion · Realtime data, owned end-to-end",
   description:
-    "Counter Companion — the local process that reads Riot's Live Client Data on the player's machine and streams it to Counter. Developer preview.",
+    "Peeked Companion — the local process that reads Riot's Live Client Data on the player's machine and streams it to Peeked. Developer preview.",
 };
 
 export default function CompanionPage() {
@@ -27,7 +27,7 @@ export default function CompanionPage() {
             Riot only publishes live in-game state to one place:{" "}
             <code>127.0.0.1:2999</code> on the player&apos;s own machine, by
             anti-cheat policy. Cloud spectator data runs three minutes behind.
-            Counter Companion is the small local process that reads the live
+            Peeked Companion is the small local process that reads the live
             feed. The distribution method for non-technical players is being
             designed.
           </p>

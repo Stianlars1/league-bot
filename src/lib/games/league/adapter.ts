@@ -7,6 +7,7 @@ import { getChampMeta } from "./data";
 import {
   championImageUrl,
   getAllChampions,
+  itemImageUrl,
   squareIconUrl,
   SUMMONER_SPELLS,
 } from "./data-dragon";
@@ -96,9 +97,21 @@ function teamId(p: { teamId: number }): "blue" | "red" {
   return p.teamId === 100 ? "blue" : "red";
 }
 
-/** Heuristic position. Spectator-v5 doesn't include role; smite reliably implies jungler. */
-function inferPosition(hasSmite: boolean): string | undefined {
-  return hasSmite ? "JUNGLE" : undefined;
+/**
+ * Heuristic position. Spectator-v5 doesn't expose `individualPosition` or
+ * `teamPosition` (those only exist on Match-v5), so we infer from signals
+ * that ARE in the payload:
+ *   - Smite presence → JUNGLE (≈99% reliable; trolls sometimes break this)
+ *   - Support archetype/tag → UTILITY (≈90% reliable)
+ * For TOP / MIDDLE / BOTTOM the signal is too noisy from kit alone — leave
+ * undefined. UI consumers (lane-matchups, power-spike role rates) already
+ * tolerate missing positions.
+ */
+function inferPosition(hasSmite: boolean, character?: Character): string | undefined {
+  if (hasSmite) return "JUNGLE";
+  if (character?.archetype === "support") return "UTILITY";
+  if (character?.tags?.some((t) => t.toLowerCase() === "support")) return "UTILITY";
+  return undefined;
 }
 
 /**
@@ -106,9 +119,10 @@ function inferPosition(hasSmite: boolean): string | undefined {
  * fallback when Spectator-v5 returns null (player not in a live match, or
  * Riot is filtering them) — the user still sees a richly analyzed match.
  */
-async function convertMatchV5(detail: MatchV5Detail, focusedPuuid: string): Promise<Match> {
+export async function convertMatchV5(detail: MatchV5Detail, focusedPuuid: string): Promise<Match> {
   const focused = detail.info.participants.find((p) => p.puuid === focusedPuuid);
   const focusedTeamId = focused?.teamId ?? 100;
+  const { version: ddVersion } = await getAllChampions();
 
   const participants: Participant[] = await Promise.all(
     detail.info.participants.map(async (p) => {
@@ -120,6 +134,9 @@ async function convertMatchV5(detail: MatchV5Detail, focusedPuuid: string): Prom
           : p.individualPosition && p.individualPosition !== "Invalid"
             ? p.individualPosition
             : undefined;
+      // Inventory: filter empty slots (id 0). Trinket (item6) included.
+      const itemSlots = [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6]
+        .filter((id): id is number => typeof id === "number" && id > 0);
       return {
         side: p.teamId === focusedTeamId ? "ally" : "enemy",
         team: p.teamId === 100 ? "blue" : "red",
@@ -135,6 +152,9 @@ async function convertMatchV5(detail: MatchV5Detail, focusedPuuid: string): Prom
               secondary: String(p.perks.styles?.[1]?.style ?? ""),
             }
           : undefined,
+        items: itemSlots.length > 0 ? itemSlots.map(String) : undefined,
+        itemImageUrls:
+          itemSlots.length > 0 ? itemSlots.map((id) => itemImageUrl(ddVersion, id)) : undefined,
         stats: {
           kills: p.kills,
           deaths: p.deaths,
@@ -302,7 +322,7 @@ export const leagueAdapter: GameAdapter = {
         return {
           side: p.teamId === focusedTeam ? "ally" : "enemy",
           team: teamId(p),
-          position: inferPosition(hasSmite),
+          position: inferPosition(hasSmite, character),
           character,
           summonerSpells: [
             SUMMONER_SPELLS[p.spell1Id] ?? `Spell ${p.spell1Id}`,

@@ -18,6 +18,7 @@ export function CharacterCard({ participant, side }: CharacterCardProps) {
   const tags = (c.tags ?? []).slice(0, 3);
 
   const stats = participant.stats;
+  const itemUrls = participant.itemImageUrls ?? [];
 
   return (
     <div className={styles.card} data-side={side} style={{ position: "relative" }}>
@@ -54,6 +55,15 @@ export function CharacterCard({ participant, side }: CharacterCardProps) {
             <span>{stats.cs} cs</span>
             <span className={styles.statSep}>·</span>
             <span>{(stats.gold / 1000).toFixed(1)}k</span>
+          </div>
+        ) : null}
+        {itemUrls.length > 0 ? (
+          <div className={styles.items}>
+            {itemUrls.map((src, idx) => (
+              <span key={`${idx}-${src}`} className={styles.itemSlot}>
+                <Image src={src} alt="" width={20} height={20} unoptimized sizes="20px" />
+              </span>
+            ))}
           </div>
         ) : null}
         {tags.length > 0 ? (

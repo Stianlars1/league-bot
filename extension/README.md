@@ -61,14 +61,17 @@ browser. The extension popup detects this and walks the user through:
 ## Override the relay host (dev)
 
 The extension defaults to `https://counter.app` (placeholder until production
-hostname is known). To point it at your local dev server, open the extension's
-service-worker DevTools console and run:
+hostname is known). To point it at your local dev server:
 
-```js
-chrome.storage.local.set({ relayHost: "http://localhost:3000" })
-```
+1. Click the extension toolbar icon.
+2. Expand the **Advanced — change relay host** disclosure inside the popup.
+3. Type the dev URL (e.g. `http://localhost:3000`) and click **Save**.
+4. Unpair + re-pair so the next pair-claim hits the new host.
 
-Then unpair + re-pair so the extension fetches the new host's pair endpoint.
+The popup validates the URL shape (must parse, must be `http`/`https`) before
+saving. The current host is shown in the popup footer (`→ host`).
+
+Works the same in Chrome, Edge, and Firefox — no DevTools console required.
 
 ## Build artifacts
 

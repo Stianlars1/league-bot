@@ -15,14 +15,14 @@ const GAMES: { id: Game; label: string; hint: string; caveat: string }[] = [
     label: "League of Legends",
     hint: 'Riot ID — e.g. "Faker#KR1"  (append "(euw1)" to override region)',
     caveat:
-      "Cloud-only: Riot's Spectator API runs ~3 min behind and is being deprecated. Counter Companion (in development) is the realtime path.",
+      "Cloud-only: Riot's Spectator API runs ~3 min behind and is being deprecated. Peeked Companion (in development) is the realtime path.",
   },
   {
     id: "dota",
     label: "Dota 2",
     hint: 'Steam account ID (32-bit) or full SteamID64 — e.g. "108108108"',
     caveat:
-      "Cloud-only: post-game match data via OpenDota. Counter Companion (in development) is the realtime path.",
+      "Cloud-only: post-game match data via OpenDota. Peeked Companion (in development) is the realtime path.",
   },
 ];
 
@@ -99,7 +99,7 @@ export function GamePicker() {
       >
         See what they&apos;re playing.
         <br />
-        <span className={styles.headlineMark}>Counter it live.</span>
+        <span className={styles.headlineMark}>Peek it live.</span>
       </motion.h1>
 
       <motion.p
@@ -108,11 +108,11 @@ export function GamePicker() {
         transition={{ duration: 0.5, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}
         className={styles.lede}
       >
-        Drop in a Riot ID or Steam account and Counter pulls everything from
+        Drop in a Riot ID or Steam account and Peeked pulls everything from
         public APIs (Spectator runs ~3 min behind by Riot policy — that&apos;s
         the cloud&apos;s ceiling).{" "}
         <Link href="/companion" className={styles.ledeLink}>
-          Counter Companion
+          Peeked Companion
         </Link>{" "}
         is the in-development realtime path.
       </motion.p>
@@ -181,7 +181,7 @@ export function GamePicker() {
       <div className={styles.ctaStack}>
         <Link href="/companion" className={styles.companionRow}>
           <span className={styles.companionPill}>DEV</span>
-          <span>Counter Companion · realtime path, in development.</span>
+          <span>Peeked Companion · realtime path, in development.</span>
           <span className={styles.sampleArrow}>→</span>
         </Link>
         <Link

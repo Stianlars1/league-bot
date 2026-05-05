@@ -48,7 +48,7 @@
   padding: 2px 6px;
   background: hsl(var(--surface));
   border: 1px solid hsl(var(--border));
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   color: hsl(var(--foreground));
 }
 
@@ -107,5 +107,5 @@
   padding: 1px 5px;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }

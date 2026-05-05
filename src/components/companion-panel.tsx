@@ -185,11 +185,11 @@ export function CompanionPanel() {
     <section className={styles.panel}>
       <header className={styles.head}>
         <div>
-          <div className={styles.eyebrow}>Counter Companion</div>
+          <div className={styles.eyebrow}>Peeked Companion</div>
           <h2 className={styles.title}>Developer preview</h2>
           <p className={styles.lede}>
             Local process that reads Riot&apos;s Live Client Data on the
-            player&apos;s machine and streams it to Counter. Distribution
+            player&apos;s machine and streams it to Peeked. Distribution
             method for non-technical players is being evaluated.
           </p>
         </div>
@@ -206,7 +206,7 @@ export function CompanionPanel() {
           <div className={styles.devBody}>
             <p className={styles.hint}>
               Generate a 6-character code below, then paste it into the
-                Counter Companion browser extension popup, or into the{" "}
+                Peeked Companion browser extension popup, or into the{" "}
               <code>pnpm companion:dev</code> CLI prompt if you&apos;re running
               the dev script. Codes are single-use and expire after 5 minutes.
             </p>
@@ -229,7 +229,7 @@ export function CompanionPanel() {
             {codeExpiresAt && !codeExpired
               ? `Expires ${fmtCountdown(codeExpiresAt, now)}`
               : "Expired — generate a new one"}{" "}
-            · paste into your Counter Companion (extension popup or{" "}
+            · paste into your Peeked Companion (extension popup or{" "}
             <code>pnpm companion:dev</code> prompt)
           </div>
         </div>
@@ -297,7 +297,7 @@ function statusLabel(s: Status): string {
     case "live":
       return "Live";
     case "error":
-      return "Error";
+      return "Stream lost";
   }
 }
 

@@ -105,7 +105,10 @@ export interface Participant {
   character: Character;
   summonerSpells?: string[]; // League: e.g. ["Flash", "Teleport"]
   runes?: { primary?: string; secondary?: string };
-  items?: string[]; // Dota
+  /** Inventory item identifiers. League: item-numeric-ID-as-string. Dota: item slugs. */
+  items?: string[];
+  /** Pre-resolved icon URLs for the items above, in the same order. */
+  itemImageUrls?: string[];
   stats?: ParticipantStats;
 }
 

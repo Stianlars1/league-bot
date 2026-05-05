@@ -6,13 +6,13 @@ import styles from "./page.module.css";
 export default function HomePage() {
   return (
     <>
-      <Header />
+      <Header live />
       <div className={styles.glowBack} aria-hidden />
       <main className={styles.main}>
         <GamePicker />
       </main>
       <footer className={styles.footer}>
-        <span>Counter — public APIs only</span>
+        <span>peeked.app — public APIs only</span>
         <div className={styles.footerLinks}>
           <a href="https://developer.riotgames.com" target="_blank" rel="noreferrer">
             Riot dev portal ↗

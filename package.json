@@ -1,5 +1,5 @@
 {
-  "name": "league-bot",
+  "name": "peeked",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,8 @@
     "companion:dev": "tsx companion/poll.ts",
     "extension:install": "cd extension && pnpm install --ignore-workspace",
     "extension:build": "cd extension && pnpm build",
-    "extension:watch": "cd extension && pnpm watch"
+    "extension:watch": "cd extension && pnpm watch",
+    "refresh-key": "tsx scripts/refresh-riot-key.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

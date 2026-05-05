@@ -58,6 +58,10 @@ export function squareIconUrl(version: string, championId: string) {
   return `${DDRAGON}/cdn/${version}/img/champion/${championId}.png`;
 }
 
+export function itemImageUrl(version: string, itemId: string | number): string {
+  return `${DDRAGON}/cdn/${version}/img/item/${itemId}.png`;
+}
+
 export function getCachedVersion() {
   return cachedVersion;
 }

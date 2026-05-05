@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Counter — Live draft coach",
+  title: "Peeked — Live draft coach",
   description:
     "Live tactical recommendations against your opponent's team in League of Legends and Dota 2. Real-time, public APIs only.",
 };

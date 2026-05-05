@@ -1,4 +1,4 @@
-# Counter — Live Draft Coach
+# Peeked — Live Draft Coach
 
 Live tactical recommendations against your opponent's team in **League of Legends** and **Dota 2**, powered by official public APIs (Riot Games, Stratz, OpenDota).
 

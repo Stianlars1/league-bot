@@ -1,0 +1,76 @@
+.shell {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 32px 32px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}
+
+.crumbs a {
+  transition: color 200ms var(--ease-out);
+}
+
+.crumbs a:hover {
+  color: hsl(var(--data));
+}
+
+.crumbDivider {
+  color: hsl(var(--subtle));
+}
+
+.crumbName {
+  color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums;
+}
+
+.headStrip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+}
+
+.outcome {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+}
+
+.outcome[data-win="true"] {
+  color: hsl(var(--ally));
+  background: hsl(var(--ally) / 0.12);
+}
+
+.outcome[data-win="false"] {
+  color: hsl(var(--enemy));
+  background: hsl(var(--enemy) / 0.12);
+}
+
+.headMeta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+}

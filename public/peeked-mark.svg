@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Peeked">
+  <!-- Back rect — peeks from behind, top-right. 0.45 alpha gives the depth. -->
+  <rect x="38" y="8" width="20" height="20" rx="1" fill="currentColor" opacity="0.45"/>
+
+  <!-- Front rect — the foreground. -->
+  <path d="M 6 22 H 42 V 58 H 6 Z" fill="currentColor"/>
+
+  <!-- Slice — diagonal cut through the front, knocked out to page background.
+       Use `var(--mark-knockout, #0a0a0c)` so the slice always matches the
+       surface it's drawn on. Light surfaces flip --mark-knockout to white. -->
+  <path d="M 18 22 L 30 58 L 22 58 L 10 22 Z" fill="var(--mark-knockout, #0a0a0c)"/>
+</svg>

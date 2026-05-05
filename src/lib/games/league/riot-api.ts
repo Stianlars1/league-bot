@@ -161,6 +161,14 @@ export interface MatchV5Participant {
   summoner1Id: number;
   summoner2Id: number;
   perks?: { styles: { style: number; description: string; selections: { perk: number }[] }[] };
+  /** Inventory slots. 0 = empty slot. item6 is the trinket. */
+  item0?: number;
+  item1?: number;
+  item2?: number;
+  item3?: number;
+  item4?: number;
+  item5?: number;
+  item6?: number;
   win: boolean;
 }
 

@@ -1,24 +1,21 @@
 import Link from "next/link";
 
+import { PeekedMark } from "./peeked-mark";
 import styles from "./header.module.css";
 
 interface HeaderProps {
   status?: "live" | "idle" | "error";
   meta?: string;
   viaCompanion?: boolean;
+  /** Marketing surfaces only — animates a blinking cursor in the wordmark. */
+  live?: boolean;
 }
 
-export function Header({ status = "idle", meta, viaCompanion = false }: HeaderProps) {
+export function Header({ status = "idle", meta, viaCompanion = false, live = false }: HeaderProps) {
   return (
     <header className={styles.header}>
-      <Link href="/" className={styles.brand}>
-        <span className={styles.brandMark} aria-hidden />
-        <span className={styles.brandLabel}>
-          <span>Counter</span>
-          <span className={styles.brandSlash}>/</span>
-          <span className={styles.brandSubLabel}>live draft coach</span>
-        </span>
-        <span className={styles.brandTag}>v0.1</span>
+      <Link href="/" className={styles.brand} aria-label="Peeked — home">
+        <PeekedMark variant="lockup" live={live} />
       </Link>
       <div className={styles.statusGroup}>
         <Link href="/companion" className={styles.navLink}>
