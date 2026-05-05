@@ -352,21 +352,85 @@ secondary issues on the `/companion` page. All four fixed and verified.
 - Cert-trust dance with an actual running League match (no game on the test
   Mac).
 
-## Pending items — per-item blockers (as of session 5)
+## Session 6 (2026-05-04 → 05) — air-tight counter loop, /match route, rebrand to Peeked
+
+Single commit: `9e00c08 feat: rebrand Counter → Peeked + air-tight counter loop + /match route + refresh-key`. 43 files, +1090 / -269.
+
+### Air-tightened the recommender (the original product idea, "live counter")
+
+The audit found the recommender was reading enemy CHAMPION identity but never enemy LIVE STATE — a Soraka with 0/8 triggered the same antiheal recommendation as a 12/0 Soraka. Closed all 7 audit gaps:
+
+- Live Client converter now extracts enemy items and estimates per-player gold (was 0 — Live Client only exposes activePlayer.currentGold).
+- Spectator-V5 `inferPosition` extended: support tag/archetype → UTILITY (was JUNGLE-only via Smite).
+- `recommender.ts` rationale strings now cite each threat's live KDA + " — fed" marker; severity bumps one step when any matched threat is fed.
+- New `evaluateThreats` helper in `ally-actions.ts`; `pickWatchOut` and `profile()` topThreat picks favour highest threatScore (kills/assists/level/gold), not array order.
+- Match-V5 adapter populates `Participant.items` + `itemImageUrls`; `CharacterCard` renders an item icons row.
+- `Recommendation.rationale` cites real KDA / gold deltas, not just champion names.
+
+### Clickable match history → `/match/[game]/[matchId]`
+
+- New route at `src/app/match/[game]/[matchId]/page.tsx` reuses `convertMatchV5` (now exported from adapter).
+- URL slug: `/match/league/EUW1_1234567890` (raw Riot ID; mirrors `/live/[game]/[id]` shape).
+- Perspective: `?p=<puuid>` query param + fallback to participant[0].
+- `MatchHistoryStrip` cards become Links when `gameId === "league"`.
+
+### Renamed the product: Counter → Peeked
+
+Brand pack arrived in `~/Downloads/unknown_lol/` (Final Handoff + Brand Guidelines). Followed Drops 01–04 verbatim, visual layer only. Highlights:
+
+- `public/peeked-mark.svg` + `<PeekedMark variant="glyph|wordmark|lockup" live? />` in `src/components/peeked-mark.tsx`. Header + landing both use the lockup; landing has the blink cursor.
+- `globals.css` :root replaced with the Peeked palette (lime brand, --warn, --mark-knockout, peeked-blink keyframes). Preserved `--radius-xl` as alias to `--radius-lg` for backward compat.
+- `--font-display` now points at `var(--font-geist-mono)` so all `.headline` / `.title` consumers auto-flip.
+- Hero: "Counter it live" → "Peek it live" (imperative, same rhetorical shape).
+- Iconography: `app/icon.svg` + `icon.tsx` + `apple-icon.tsx` + `opengraph-image.tsx` via `next/og` ImageResponse — no new deps. Old `favicon.ico` removed.
+- Radii sweep: hardcoded 4-8px → `var(--radius-md)` (=4px, tighter), 3px → `var(--radius-sm)` (=2px). 999px pills preserved per Drop 04 "confirm context".
+- Voice sweep: `companion-panel` status `"Error"` → `"Stream lost"`. No `Loading…`/`Insights`/`Tracker` matches found.
+- `package.json` name: `league-bot` → `peeked`. README H1 updated.
+
+NOT touched per Drop 04 scope: `src/lib/games/**` rule strings (e.g. `Counter their silences` in dota recommender), `Counter-strategy` / `Counterplay` labels (gaming vocabulary, not brand), `extension/` (manifests + popup still say "Counter Companion" — separate rebrand), tests, Drizzle schema, internal docs (RULES/MEMORY/plans/companion docs).
+
+### `pnpm refresh-key` helper (clipboard-flow, not Playwright)
+
+Original Playwright approach blocked by Google's SSO automation check. Pivoted to clipboard flow:
+
+- `scripts/refresh-riot-key.ts` opens `developer.riotgames.com/dashboard` in your default browser (existing session, no Google block, usually no 2FA), then polls `pbpaste`. Copy the RGAPI key and the script writes it to `.env.local`.
+- `docs/riot-personal-application-key.md` — drafted application checklist for the non-expiring Personal Application Key, with the four blockers that must clear before submission (production URL, privacy policy, terms of service, real logo art).
+
+### Other
+
+- `extension/README.md` — replaced stale "open SW DevTools console + run `chrome.storage.local.set`" copy with the popup's "Advanced — change relay host" disclosure flow. Cross-browser, validates URL shape.
+
+### Verified this session
+
+- `pnpm exec tsc --noEmit` clean
+- `pnpm build` passes (all routes, including new icons + OG)
+- Smoke (curl): `/`, `/companion`, `/icon`, `/icon.svg`, `/apple-icon`, `/opengraph-image`, `/live/league/sample?mock=1`, `/match/league/junk` (404 path) all 200/404 as expected
+- OG image renders as a real 1200×630 PNG
+- Landing HTML shows `peeked` + `Peek it live`, no "Counter" leakage
+
+### NOT verified this session
+
+- Running League match through the full Live Client → Companion → /live pipe (no game on the test Mac)
+- `pnpm refresh-key` end-to-end (needs your real Riot login + clipboard interaction)
+- Edge / Firefox extension smoke test (deferred from session 5, still deferred)
+- Any browser extension change for the rebrand (`extension/manifest/manifest.*.json` `name` is still "Counter Companion")
+- Pre-existing `pnpm lint` failures (12 errors, all setState-in-effect / data-dragon empty interface) — none introduced by this session, none in lines I touched
+
+## Pending items — per-item blockers (as of session 6)
 
 Per RULES.md none of these were silently advanced. Each needs your input.
 
 | Item | What it needs from you |
 |---|---|
-| Production hostname swap | The actual production URL. Today `https://counter.app` is a placeholder in `extension/manifest/manifest.{chrome,firefox}.json` + `extension/src/lib/relay.ts`. If `counter.app` IS the real URL, the swap is a no-op — confirm and I'll remove the TODOs. |
-| Real icon art | Brand direction. Current PNGs are Pillow-generated dark cyan square + dot (matches the in-popup brand-mark CSS). Options: (a) commission real art, (b) AI-generate from a brief, (c) iterate from current placeholder, (d) ship placeholder to private/internal distribution and defer. |
+| Extension rebrand (Counter Companion → Peeked Companion) | Drop 04 was "src/ visual layer only". Extension manifests + popup copy still say "Counter Companion". Decision: separate rebrand session, or keep "Counter Companion" as the extension product name (sub-brand)? |
+| Production hostname swap | The actual production URL. Today `https://counter.app` is a placeholder in `extension/manifest/manifest.{chrome,firefox}.json` + `extension/src/lib/relay.ts`. Now that the brand is Peeked, the URL is presumably `peeked.app` (per Drop 04 codebase references) — confirm and I'll do the swap. |
+| Personal Application Key (PAK) submission | Four blockers in `docs/riot-personal-application-key.md` must clear: production URL hosted, privacy policy hosted, terms of service hosted, real logo art (current `extension/assets/icon-*.png` are Pillow placeholders). Logo blocker is now LESS severe — `public/peeked-mark.svg` is the real brand mark; same SVG can be used for the extension icon if you want. |
+| Real icon art for extension popup | `extension/assets/icon-{16,48,128}.png` are Pillow placeholders. The Peeked mark SVG could be rendered to PNGs at those sizes. Decision: use the new mark, or a different extension icon? |
 | Store accounts | User-action: Chrome Web Store ($5, Google account), Firefox AMO (free), Edge Add-ons (free, requires Microsoft Partner Center). Order of registration is your call. |
 | Production storage swap | Architectural pick: Vercel Marketplace Postgres vs Upstash Redis — both noted in `docs/companion-app.md`. Both need credentials + schema. |
-| Edge / Firefox smoke test | User action: load `dist/firefox/manifest.json` as temporary add-on at `about:debugging`; load `dist/chrome/` in Edge via `edge://extensions`. No code changes likely needed; surface bugs the same way. |
-| `extension/README.md` dev-override copy | Tells you to use the SW DevTools console for `relayHost` overrides. The popup's Advanced disclosure does the same thing now; the README is stale. Pure docs fix. Flagged not fixed. |
-| Extension popup relay-down indicator | Currently the popup says "Paired and watching" even if the relay is unreachable, because no game = no push attempts = no failure signal. Adding a periodic relay-health probe = new background-loop concern + new server route. Flagged not built. |
+| Edge / Firefox extension smoke test | User-action, deferred. Load `dist/firefox/manifest.json` as temp add-on; `dist/chrome/` in Edge via `edge://extensions`. |
+| Pre-existing lint failures | `pnpm lint` has 12 errors (setState-in-effect in companion-panel + use-ticking-time + use-live-match; empty interface in data-dragon; unused eslint-disable in icons.tsx). None blocking the build. Decide whether to fix in a cleanup pass. |
+| `pnpm refresh-key` end-to-end smoke | Run it, log in to dev portal, copy your key, watch the script catch it. If selectors / clipboard pattern differ from what I wrote, I'll iterate. |
 | **Older queue (unchanged)** | |
-| #3 Clickable history → `/match/[game]/[matchId]` route | Scope decision: how the URL slug encodes the match (region prefix? riot match-id format?), which existing component to lift into the page. Match-V5-by-ID already wired in `src/lib/games/league/riot-api.ts`. |
 | #5 WoW game support | Major new feature. Battle.net app registration + OAuth credentials, decision on Raider.IO API key vs anonymous, decision on whether `GameId` adds `\| "wow"` or a parallel system. |
-| #6 `pnpm refresh-key` helper | Adds Playwright dependency. Decisions: where to store the rotated key (`.env.local` only? push to Vercel?), whether to also apply for Personal Application Key in parallel. |
 | #9 Mirror Community Dragon assets | New build/cron job. Decisions: refresh cadence, where to host (`/public/assets/lol/` vs blob storage), what subset of CDragon to mirror. |
