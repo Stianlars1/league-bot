@@ -6,7 +6,7 @@
 
 const DDRAGON = "https://ddragon.leagueoflegends.com";
 
-interface VersionsResponse extends Array<string> {}
+type VersionsResponse = string[];
 
 export async function latestVersion(): Promise<string> {
   const res = await fetch(`${DDRAGON}/api/versions.json`, { cache: "no-store" });

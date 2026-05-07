@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import type { GameIcons } from "../icons";
 
 const DDRAGON_VERSION = "14.24.1";

@@ -57,8 +57,11 @@ export function CompanionPanel() {
   const persistedRef = useRef(false);
 
   useEffect(() => {
+    // Deferred-read pattern: localStorage is browser-only, so this can't run
+    // in render. A useState initializer would cause SSR/CSR hydration mismatch.
     const stored = readToken();
     if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration localStorage read
       setToken(stored);
       persistedRef.current = true;
       setStatus("waiting");
@@ -66,20 +69,20 @@ export function CompanionPanel() {
   }, []);
 
   useEffect(() => {
-    if (!codeExpiresAt) return;
-    setNow(Date.now());
+    // Always tick: drives the pairing-code countdown AND the frame-age display.
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [codeExpiresAt]);
+  }, []);
 
   const codeExpired = codeExpiresAt !== null && codeExpiresAt - now <= 0;
 
   useEffect(() => {
     if (!codeExpired) return;
+    // Reactive cleanup when the TTL elapses; can't be derived because we also
+    // need to push status back to "unpaired" if no frames ever arrived.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- TTL-elapsed cleanup
     setCode(null);
     setCodeExpiresAt(null);
-    // Only revert the surface to "unpaired" if no frames ever arrived; if the
-    // companion claimed the code in time we're already paired and live.
     if (frameCount === 0) setStatus("unpaired");
   }, [codeExpired, frameCount]);
 
@@ -240,7 +243,7 @@ export function CompanionPanel() {
           <Stat label="Frames received" value={String(frameCount)} />
           <Stat
             label="Last frame"
-            value={frame ? fmtAge(Date.now() - frame.capturedAt) : "—"}
+            value={frame ? fmtAge(now - frame.capturedAt) : "—"}
           />
           <Stat
             label="Game time"

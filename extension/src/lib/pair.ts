@@ -30,7 +30,7 @@ export async function pairWithCode(
       return {
         ok: false,
         error:
-          "Couldn't reach the Counter relay. Check your network — or, if you've changed the host, the host setting below.",
+          "Couldn't reach the Peeked relay. Check your network — or, if you've changed the host, the host setting below.",
       };
     case "server-error":
       return {
@@ -41,7 +41,7 @@ export async function pairWithCode(
       return {
         ok: false,
         error:
-          "The relay returned something unexpected. Check the host setting points to a real Counter deployment.",
+          "The relay returned something unexpected. Check the host setting points to a real Peeked deployment.",
       };
   }
 }

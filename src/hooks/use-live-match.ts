@@ -100,9 +100,11 @@ export function useLiveMatch(params: {
   const [companionToken, setCompanionToken] = useState<string | null>(null);
 
   // Mock mode is for offline UI testing — never let a stored companion token
-  // hijack a sample/mock view.
+  // hijack a sample/mock view. Deferred-read because localStorage is
+  // browser-only; a useState initializer would cause an SSR/CSR mismatch.
   useEffect(() => {
     if (mock) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mock-mode reset
       setCompanionToken(null);
       return;
     }
@@ -174,6 +176,7 @@ export function useLiveMatch(params: {
     if (polled.data.fetchedAt === lastFetchedAt.current) return;
     lastFetchedAt.current = polled.data.fetchedAt;
     if (polled.data.match) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- streak counter from observed data
       setNullStreak(0);
     } else {
       setNullStreak((s) => s + 1);

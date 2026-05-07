@@ -1,8 +1,8 @@
 /**
- * Build the Counter Companion extension into per-browser dist/ folders.
+ * Build the Peeked Companion extension into per-browser dist/ folders.
  *
- *   pnpm --filter counter-companion-extension build      # one-shot
- *   pnpm --filter counter-companion-extension watch      # rebuild on change
+ *   pnpm --filter peeked-companion-extension build      # one-shot
+ *   pnpm --filter peeked-companion-extension watch      # rebuild on change
  *
  * Each target gets its own manifest.json + the same JS/HTML/CSS/assets payload.
  * Chrome/Edge load dist/chrome as an unpacked extension; Firefox loads

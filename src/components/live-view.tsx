@@ -173,7 +173,7 @@ export function LiveView({ game, id, region, name, caveat, mock }: LiveViewProps
             </span>
             <h1 className={styles.statusTitle}>
               {nullStreak >= 10 ? (
-                <>Riot's Spectator API isn&apos;t returning data for {name ?? "this player"}</>
+                <>Riot&apos;s Spectator API isn&apos;t returning data for {name ?? "this player"}</>
               ) : (
                 <>
                   Watching for{" "}

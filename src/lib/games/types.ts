@@ -176,6 +176,58 @@ export type RecommendationCategory =
   | "objective"
   | "lane-matchup";
 
+/**
+ * Provenance for a recommendation. Layers correspond to the tiered
+ * recommender engine (see docs/plans/recommender-tiered-engine.md):
+ *   1 — rule-based, anchored to live state via item-tags
+ *   2 — curated counter-graph + per-champion paths (cited)
+ *   3 — empirical aggregates from Match-V5 (sample size + win rate)
+ */
+export type RecommendationSource =
+  | { layer: 1; ruleId: string }
+  | { layer: 2; ruleId: string; cite: string }
+  | { layer: 3; sampleSize: number; winRate: number; patch: string };
+
+/**
+ * Semantic threat types the curated counter-graph maps to counter items.
+ * Distinguished by mechanic (burst vs DoT) not just damage type, because
+ * counter items differ — Maw's lifeline shield is great vs burst, weaker
+ * vs sustained DoT; Force of Nature scales with magic damage taken so it's
+ * stronger vs DoT than vs burst.
+ */
+export type ThreatType =
+  | "AP-burst"
+  | "AP-DoT"
+  | "AP-sustained"
+  | "AD-burst"
+  | "AD-sustained"
+  | "AD-attackspeed"
+  | "Tank"
+  | "Healing"
+  | "Shielding"
+  | "CC-chain"
+  | "Engage"
+  | "Poke"
+  | "Roam";
+
+/**
+ * One ordered step in a curated build path. Layer 2 emits these per ally
+ * based on enemy threat types. Layer 3 will replace `confidence: "curated"`
+ * with `confidence: "empirical"` when win-rate data backs the choice.
+ */
+export interface BuildStep {
+  itemId: string;            // Riot item ID (numeric string from Data Dragon)
+  itemName: string;          // "Mortal Reminder"
+  itemImageUrl?: string;
+  reason: string;            // why this item, for THIS ally vs THIS enemy state
+  cost: number;              // total gold cost from Data Dragon
+  /** Sub-components the ally already owns (saves the player gold). */
+  componentsOwned?: string[];
+  confidence: "rule" | "curated" | "empirical";
+  /** Citation tying this recommendation to a documented mechanic / source. */
+  cite?: string;
+}
+
 export interface Recommendation {
   id: string; // stable key for React lists, ideally "<category>:<rule-id>"
   category: RecommendationCategory;
@@ -189,6 +241,11 @@ export interface Recommendation {
   forArchetypes?: string[];
   /** Optional: target a specific ally so UI can pin it under that player */
   forAllyPosition?: string;
+  /** Which layer of the recommender engine produced this (when known). */
+  source?: RecommendationSource;
+  /** When multiple layers produced an answer for the same slot, the
+   *  lower-confidence ones are listed here so the UI can show fallbacks. */
+  alsoFrom?: RecommendationSource[];
 }
 
 /**
@@ -209,6 +266,12 @@ export interface AllyAction {
   followUps: string[];
   /** The single most dangerous enemy for this ally */
   watchOut?: { championId: string; championName: string; reason: string };
+  /** Which layer produced this advice (see RecommendationSource). */
+  source?: RecommendationSource;
+  /** Layer 2+: ordered next-buy queue with per-step rationale + citation.
+   *  Empty when the ally champion has no curated entry — falls back to
+   *  the layer-1 `priority` + `followUps` pair. */
+  buildPath?: BuildStep[];
 }
 
 /** Top-level "how do we beat this comp" — one paragraph, 1-2 actions */

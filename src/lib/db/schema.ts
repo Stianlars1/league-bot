@@ -1,5 +1,12 @@
 import { jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
+// Layer-3 recommender tables (dormant — see schema-recommender.ts header).
+export {
+  championBuildAggregates,
+  ingestState,
+  matchPlayerBuilds,
+} from "./schema-recommender";
+
 /**
  * Cached player lookups: Riot ID → PUUID, Steam friend code → account_id.
  * Composite key (game_id, external_id) keeps the schema multi-game from day 1.

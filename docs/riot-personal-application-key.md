@@ -10,19 +10,19 @@
 
 | Field | Draft answer | Status |
 |---|---|---|
-| Application name | Counter | OK |
-| Application URL | `https://counter.app` | **BLANK** — confirm this is the real production URL, or supply the real one. Riot rejects PAK applications without a working URL. |
-| Logo | `extension/assets/icon-128.png` | **PLACEHOLDER** — current art is a Pillow-generated dark cyan square. Replace before submit. |
+| Application name | Peeked | OK |
+| Application URL | `https://peeked.app` | OK once site is deployed |
+| Logo | `extension/assets/icon-128.png` | OK — rendered from `public/peeked-mark.svg` via `pnpm extension:icons` |
 | Description | See below | DRAFT — read + edit |
-| Privacy Policy URL | — | **MISSING** — required by Riot. Needs to be written + hosted on the same domain. |
-| Terms of Service URL | — | **MISSING** — required by Riot. Same as above. |
+| Privacy Policy URL | `https://peeked.app/privacy` | OK once site is deployed (route in `src/app/privacy/page.tsx`) |
+| Terms of Service URL | `https://peeked.app/terms` | OK once site is deployed (route in `src/app/terms/page.tsx`) |
 | Anticipated user base | <100 in pilot, growing | DRAFT |
 | API call rate estimate | ~1 call per 15s per active session (Spectator-V5 polling); plus on-demand Match-V5 history reads. ~5–10 reqs/s peak across the user base. | DRAFT — adjust to your real expectation |
 | Will the application be open-source? | _pick_ | **BLANK** — yes/no |
 
-## Description (draft — factually accurate to what Counter does today)
+## Description (draft — factually accurate to what Peeked does today)
 
-> Counter is a real-time match analysis web app for League of Legends
+> Peeked is a real-time match analysis web app for League of Legends
 > players. A user enters their Riot ID; the app surfaces their current live
 > match (via Spectator-V5 and the Riot Live Client Data API through a paired
 > companion process running on the player's own machine) and renders
@@ -55,17 +55,22 @@ For the "which endpoints does your app call" prompt:
 
 ## Blockers — must clear before submission
 
-These are also tracked in `HANDOFF.md`:
+The codebase blockers are now resolved (extension rebrand to `peeked.app`,
+`/privacy` and `/terms` routes exist, brand-mark icon rendered from
+`public/peeked-mark.svg`). What remains is user-side:
 
-1. **Hosted production URL.** `counter.app` is a placeholder string in the
-   extension manifests + `relay.ts`. Riot needs a working URL to review.
-2. **Privacy policy.** Hosted on the same domain. A generator-based policy
-   is acceptable to start (privacypolicies.com / iubenda / a hand-written
-   one); link must resolve.
-3. **Terms of service.** Same shape as above. Riot accepts straightforward
-   "use at your own risk, we don't store more than X" wording.
-4. **Real logo art.** Replace `extension/assets/icon-128.png` placeholder
-   before submit; same icon should also appear at the application URL.
+1. **Deploy `peeked.app`.** The three URL fields (Application URL,
+   Privacy Policy URL, Terms of Service URL) all point at routes that exist
+   in this codebase but won't resolve publicly until the site is deployed
+   and the domain is pointed at it. Riot's reviewer clicks the URLs.
+2. **Fill the `{{TODO: contact email}}` placeholder** in
+   `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`. Both pages will
+   render the literal token until you replace it.
+3. **Fill the `{{TODO: jurisdiction}}` placeholder** in
+   `src/app/terms/page.tsx`. Pick the governing-law jurisdiction (your
+   country / state) before deploying.
+4. **Decide open-source yes/no** for the form field.
+5. **Adjust the API call rate estimate** to your real expectation.
 
 ## What happens after approval
 

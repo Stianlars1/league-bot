@@ -11,6 +11,9 @@ export function useTickingTime(serverSeconds: number, lastSyncedAt: number) {
   const [now, setNow] = useState(() => serverSeconds);
 
   useEffect(() => {
+    // Resyncs local clock to the server-provided value on every poll so
+    // duration display stays accurate across SWR refreshes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server-driven resync of locally-ticking clock
     setNow(serverSeconds);
   }, [serverSeconds, lastSyncedAt]);
 

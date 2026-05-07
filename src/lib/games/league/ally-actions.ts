@@ -1,5 +1,7 @@
 import type { AllyAction, Match, MatchPlan, Participant, Severity } from "../types";
 import { getChampMeta, type LeagueChampMeta } from "./data";
+import { getItemTag, type StatTag } from "./item-tags";
+import { getLayer2BuildPaths } from "./recommender-l2";
 
 /**
  * Map each ally on the team to the ONE item they should rush, plus a
@@ -29,6 +31,12 @@ export interface Threat {
   fed: boolean;
   /** Sort key, higher = more dangerous. 0 when no live stats. */
   threatScore: number;
+  /** Number of completed legendary items (excludes boots & components).
+   *  Layer-1: feeds threat scoring + rule severity. 0 when itemDb not warm. */
+  completedItems: number;
+  /** Stat-tags present across this enemy's completed items. Empty when
+   *  itemDb not warm. */
+  itemTags: Set<StatTag>;
 }
 
 /**
@@ -45,21 +53,71 @@ export function evaluateThreats(
   for (const meta of metas) {
     const participant = byId.get(meta.id);
     if (!participant) continue;
+
+    // Layer-1: derive item profile per enemy. Returns 0 / empty set when
+    // item DB hasn't been warmed (Spectator-V5 draft-only path), so the
+    // formula degrades to the original KDA+level+gold blend.
+    const { completedItems, itemTags } = summarizeItems(participant.items);
+
     const stats = participant.stats;
     if (!stats) {
-      out.push({ meta, participant, kdaRatio: 0, fed: false, threatScore: 0 });
+      out.push({
+        meta,
+        participant,
+        kdaRatio: 0,
+        fed: false,
+        threatScore: 0,
+        completedItems,
+        itemTags,
+      });
       continue;
     }
     const ratio = (stats.kills + stats.assists) / Math.max(1, stats.deaths);
     const fed = ratio >= 2.5 && stats.kills + stats.assists >= 5;
     // Blend kill/assist participation, death penalty, and level lead. Gold is
     // an estimate for non-active players in the Live Client path, so we
-    // weight it lightly here — KDA is the truer signal moment-to-moment.
+    // weight it lightly. Item completion gets +2 per legendary because each
+    // completed item is a tangible step in the threat curve — a 5/0 enemy
+    // with one Pickaxe is much less dangerous than 5/0 with three legendaries.
     const threatScore =
-      stats.kills * 3 + stats.assists - stats.deaths * 2 + stats.level / 4 + stats.gold / 1500;
-    out.push({ meta, participant, kdaRatio: ratio, fed, threatScore });
+      stats.kills * 3 +
+      stats.assists -
+      stats.deaths * 2 +
+      stats.level / 4 +
+      stats.gold / 1500 +
+      completedItems * 2;
+    out.push({
+      meta,
+      participant,
+      kdaRatio: ratio,
+      fed,
+      threatScore,
+      completedItems,
+      itemTags,
+    });
   }
   return out;
+}
+
+function summarizeItems(items: string[] | undefined): {
+  completedItems: number;
+  itemTags: Set<StatTag>;
+} {
+  const itemTags = new Set<StatTag>();
+  if (!items || items.length === 0) {
+    return { completedItems: 0, itemTags };
+  }
+  let completedItems = 0;
+  for (const id of items) {
+    if (!id || id === "0") continue;
+    const tag = getItemTag(id);
+    if (!tag) continue;
+    if (tag.isLegendary) {
+      completedItems++;
+      for (const t of tag.statTags) itemTags.add(t);
+    }
+  }
+  return { completedItems, itemTags };
 }
 
 function prettifyName(id: string) {
@@ -95,6 +153,91 @@ export function bumpSeverity(severity: Severity, when: boolean): Severity {
 function topMetaOf(threats: Threat[]): LeagueChampMeta | undefined {
   if (threats.length === 0) return undefined;
   return threats.reduce((a, b) => (b.threatScore > a.threatScore ? b : a)).meta;
+}
+
+// ============================================================================
+// Layer-1 item profile: aggregated enemy-team item presence, used by the
+// recommender to gate rules on real items rather than just champion tags.
+// ============================================================================
+
+/** Real-state aggregate of the enemy team's completed items. Empty when
+ *  the item DB hasn't been warmed (Spectator-V5 draft path). */
+export interface EnemyItemProfile {
+  /** Count of completed items across the enemy team carrying each stat tag. */
+  presence: Map<StatTag, number>;
+  /** Per-enemy items contributing to team-wide healing / sustain — used by
+   *  the antiheal rule to cite which items triggered it. */
+  healingItems: { ownerChampionId: string; itemId: string; itemName: string }[];
+  /** Total completed legendary items across the enemy team. */
+  totalCompletedItems: number;
+  /** Total gold cost of every completed enemy item. Approximates "build
+   *  maturity" — irrelevant in early game, decisive in late game. */
+  totalGoldOnLegendaries: number;
+  /** Coarse build-stage label derived from totalCompletedItems / 5 enemies. */
+  stage: "early" | "1-item" | "2-item" | "core" | "full";
+}
+
+export function buildEnemyItemProfile(enemies: Participant[]): EnemyItemProfile {
+  const presence = new Map<StatTag, number>();
+  const healingItems: EnemyItemProfile["healingItems"] = [];
+  let totalCompletedItems = 0;
+  let totalGoldOnLegendaries = 0;
+
+  for (const enemy of enemies) {
+    if (!enemy.items) continue;
+    for (const id of enemy.items) {
+      if (!id || id === "0") continue;
+      const tag = getItemTag(id);
+      if (!tag || !tag.isLegendary) continue;
+
+      totalCompletedItems++;
+      totalGoldOnLegendaries += tag.cost;
+      for (const t of tag.statTags) {
+        presence.set(t, (presence.get(t) ?? 0) + 1);
+      }
+      // An enemy item contributes to "team healing" if it's a personal
+      // sustain item (Lifesteal/Omnivamp) OR an active heal/shield item
+      // (Healing/Shielding tags from description detection).
+      if (
+        tag.statTags.has("Lifesteal") ||
+        tag.statTags.has("Omnivamp") ||
+        tag.statTags.has("Healing")
+      ) {
+        healingItems.push({
+          ownerChampionId: enemy.character.id,
+          itemId: tag.id,
+          itemName: tag.name,
+        });
+      }
+    }
+  }
+
+  const avg = enemies.length > 0 ? totalCompletedItems / enemies.length : 0;
+  const stage: EnemyItemProfile["stage"] =
+    avg < 0.5 ? "early" : avg < 1.5 ? "1-item" : avg < 2.5 ? "2-item" : avg < 3.5 ? "core" : "full";
+
+  return {
+    presence,
+    healingItems,
+    totalCompletedItems,
+    totalGoldOnLegendaries,
+    stage,
+  };
+}
+
+/** True when at least one ally already owns an antiheal-applying item.
+ *  Lets the recommender suppress duplicate "build antiheal" advice when
+ *  the team has already addressed it. */
+export function allyHasAntiheal(allies: Participant[]): boolean {
+  for (const ally of allies) {
+    if (!ally.items) continue;
+    for (const id of ally.items) {
+      if (!id || id === "0") continue;
+      const tag = getItemTag(id);
+      if (tag?.statTags.has("AntiHeal")) return true;
+    }
+  }
+  return false;
 }
 
 interface EnemyProfile {
@@ -360,6 +503,10 @@ export function getAllyActions(match: Match): AllyAction[] {
   const threats = evaluateThreats(enemies, enemyMetas);
   const p = profile(threats);
 
+  // Layer-2: per-ally curated build paths (allies without curated entries
+  // are absent from the map — those keep layer-1 advice only).
+  const layer2 = getLayer2BuildPaths(match);
+
   return allies.map((ally) => {
     const meta = getChampMeta(ally.character.id);
     const archetype = meta?.archetype ?? ally.character.archetype ?? "fighter";
@@ -376,6 +523,8 @@ export function getAllyActions(match: Match): AllyAction[] {
       build = buildForFrontline(p);
     }
 
+    const buildPath = layer2.get(ally.character.id);
+
     return {
       championId: ally.character.id,
       championName: ally.character.name,
@@ -386,6 +535,9 @@ export function getAllyActions(match: Match): AllyAction[] {
       priority: build.priority,
       followUps: build.followUps,
       watchOut: pickWatchOut(meta, p, threats),
+      // Layer-2 buildPath (curated, cited). Empty when champion isn't
+      // curated yet; layer-1 priority/followUps always present as fallback.
+      ...(buildPath && buildPath.length > 0 ? { buildPath } : {}),
     } satisfies AllyAction;
   });
 }

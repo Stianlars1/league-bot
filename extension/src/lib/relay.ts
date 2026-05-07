@@ -1,9 +1,8 @@
 import { getItem, setItem } from "./storage";
 
-// TODO(prod): swap "https://counter.app" for the real production hostname when
-// it lands. Single grep target. The dev override (relayHost in chrome.storage)
-// always wins so local development doesn't need to touch this file.
-const DEFAULT_HOST = "https://counter.app";
+// Production hostname. The dev override (relayHost in chrome.storage) always
+// wins so local development doesn't need to touch this file.
+const DEFAULT_HOST = "https://peeked.app";
 const HOST_KEY = "relayHost";
 
 export async function getRelayHost(): Promise<string> {

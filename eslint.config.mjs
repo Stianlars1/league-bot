@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Build artifacts from the browser extension — esbuild output, not source.
+    "extension/dist/**",
   ]),
 ]);
 

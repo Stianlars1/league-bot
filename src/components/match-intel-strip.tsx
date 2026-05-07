@@ -169,18 +169,11 @@ function Objectives({ intel, fetchedAt }: { intel: MatchIntel; fetchedAt: number
 }
 
 function ObjectiveRow({ obj, fetchedAt }: { obj: ObjectiveTimer; fetchedAt: number }) {
-  const ticking = useTickingTime(Math.max(0, obj.inSeconds), fetchedAt);
-  // Down-counter rather than up-counter
-  const inSec = Math.max(0, obj.inSeconds - (ticking - obj.inSeconds));
-  // Simpler: derive from time elapsed since fetch
-  const sinceFetch = Math.floor((Date.now() - fetchedAt) / 1000);
+  const sinceFetch = useTickingTime(0, fetchedAt);
   const remaining = Math.max(0, obj.inSeconds - sinceFetch);
 
   const label = OBJECTIVE_LABELS[obj.kind];
   const status = remaining <= 0 ? "available" : obj.status;
-
-  // satisfy lint — read inSec to avoid unused warnings if implementation evolves
-  void inSec;
 
   return (
     <div className={styles.objRow} data-status={status}>

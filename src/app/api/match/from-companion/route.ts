@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getLatestFrame } from "@/lib/companion/store";
-import { getAdapter } from "@/lib/games/registry";
+import { ensureItemDb } from "@/lib/games/league/item-tags";
 import { liveClientToMatch } from "@/lib/games/league/live-client-converter";
+import { mergeLayer3 } from "@/lib/games/league/recommender-l3";
+import { getAdapter } from "@/lib/games/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,8 +73,20 @@ export async function GET(req: Request) {
   }
 
   const adapter = getAdapter("league");
+
+  // Layer-1: warm the item DB so the recommender can read enemy items.
+  // Best-effort — if Data Dragon is down, recommender degrades to tag-only
+  // behaviour rather than failing the whole request.
+  try {
+    await ensureItemDb();
+  } catch {
+    /* recommender will skip item-aware logic and return rule-driven recs */
+  }
+
   const recommendations = adapter.recommender.recommend(match);
-  const allyActions = adapter.recommender.allyActions?.(match) ?? [];
+  const allyActionsBase = adapter.recommender.allyActions?.(match) ?? [];
+  // Layer-3 merge: no-op when RECOMMENDER_LAYER_3=false (default).
+  const allyActions = await mergeLayer3(match, allyActionsBase);
   const plan = adapter.recommender.plan?.(match) ?? null;
   const intel = adapter.recommender.intel?.(match) ?? null;
 

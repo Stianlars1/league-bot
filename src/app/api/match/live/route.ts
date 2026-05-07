@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { cachedMatch } from "@/lib/cache";
+import { ensureItemDb } from "@/lib/games/league/item-tags";
+import { mergeLayer3 } from "@/lib/games/league/recommender-l3";
 import { buildMockPayload } from "@/lib/games/mock";
 import { getAdapter, isGameId } from "@/lib/games/registry";
 import type {
@@ -79,8 +81,22 @@ export async function GET(req: Request) {
         // Recent matches strip — fire in parallel, never blocks the main view
         const recentMatchesPromise = adapter.getRecentMatches?.(player, 5).catch(() => []) ?? Promise.resolve([]);
 
+        // Layer-1: warm the item DB so league recs can read enemy items.
+        // No-op for Dota; best-effort if Data Dragon is unreachable.
+        if (match && game === "league") {
+          try {
+            await ensureItemDb();
+          } catch {
+            /* degrades to tag-only behaviour */
+          }
+        }
+
         const recommendations = match ? adapter.recommender.recommend(match) : [];
-        const allyActions = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
+        const allyActionsBase = match ? (adapter.recommender.allyActions?.(match) ?? []) : [];
+        // Layer-3 merge: no-op when RECOMMENDER_LAYER_3=false (default).
+        const allyActions = match
+          ? await mergeLayer3(match, allyActionsBase)
+          : allyActionsBase;
         const plan = match ? (adapter.recommender.plan?.(match) ?? null) : null;
         const intel = match ? (adapter.recommender.intel?.(match) ?? null) : null;
         const recentMatches = await recentMatchesPromise;

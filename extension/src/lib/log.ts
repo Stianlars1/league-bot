@@ -1,4 +1,4 @@
-const PREFIX = "[counter-companion]";
+const PREFIX = "[peeked-companion]";
 
 export function log(...args: unknown[]): void {
   console.log(PREFIX, ...args);

@@ -1,8 +1,11 @@
 import type { Recommender } from "../adapter";
-import type { Match, Recommendation } from "../types";
+import type { Match, Recommendation, RecommendationSource } from "../types";
 import {
+  allyHasAntiheal,
   anyFed,
+  buildEnemyItemProfile,
   bumpSeverity,
+  type EnemyItemProfile,
   evaluateThreats,
   formatThreats,
   getAllyActions,
@@ -13,15 +16,27 @@ import { getChampMeta, type LeagueChampMeta } from "./data";
 import { computeMatchIntel } from "./intel";
 
 /**
- * Rules-based draft coach for LoL. Reads enemy team comp from the normalized
- * Match and emits prioritized Recommendation entries.
+ * Layer-1 rules-based recommender for LoL. Reads enemy team comp + live
+ * item state from the normalized Match and emits prioritized Recommendations.
  *
- * As of the air-tightness pass, rules also read live participant stats:
- *   - rationale strings cite each named threat's KDA (and " — fed" marker)
- *   - severity bumps one step when any matched threat is fed
- *   - rules degrade to plain champion-name rationales when stats are absent
- *     (Spectator-V5 path, draft-only frames)
+ * Layer 1 (this file):
+ *   - Rules anchored to BOTH champion tags (the static layer) AND real
+ *     completed items pulled via EnemyItemProfile (the live layer).
+ *   - Rationale strings cite triggering items where the rule is item-driven.
+ *   - Severity escalates one step when matched threats are fed AND another
+ *     step when matched threats have built core items.
+ *   - Every Recommendation carries source: { layer: 1, ruleId } so callers
+ *     can distinguish layer-1 output from layers 2/3 once those land.
+ *
+ * Layer 1 degrades cleanly when the item DB hasn't been warmed (Spectator-V5
+ * draft path, item DB fetch failed): EnemyItemProfile is empty, rules fall
+ * back to pure tag-based behaviour, identical to the pre-Layer-1 output.
  */
+
+/** Helper: every layer-1 emit carries the same `source` shape. */
+function l1(ruleId: string): RecommendationSource {
+  return { layer: 1, ruleId };
+}
 
 function metaFor(championId: string): LeagueChampMeta | undefined {
   return getChampMeta(championId);
@@ -74,6 +89,7 @@ export const leagueRecommender: Recommender = {
         severity: "low",
         title: "Limited data on this enemy comp",
         body: "We don't have curated metadata for these champions yet. Check matchups manually.",
+        source: l1("fallback:no-meta"),
       });
       return recs;
     }
@@ -82,49 +98,122 @@ export const leagueRecommender: Recommender = {
     const { ad, ap, tagsCount } = tally(enemyMetas);
     const total = enemyMetas.length;
 
+    // Layer-1: compute the enemy item profile once. Empty when the item DB
+    // hasn't been warmed; rules then degrade to tag-only behaviour.
+    const itemProfile: EnemyItemProfile = buildEnemyItemProfile(enemies);
+    const allyAntiheal = allyHasAntiheal(allies);
+    /** True when at least one matched threat has 2+ completed legendaries —
+     *  used to bump severity beyond the "fed" bump for late-game urgency. */
+    const threatsAreCored = (matched: Threat[]) =>
+      matched.some((t) => t.completedItems >= 2);
+
     // ---- Damage profile ----
-    if (ap >= 3) {
+    // Layer-1 upgrade: rule fires on EITHER champion-tag count >= 3 OR
+    // completed AP/AD-tagged items >= 4. So a 2-AP team that rushed AP items
+    // still triggers, and severity escalates as their items mature.
+    const apItemCount = itemProfile.presence.get("AP") ?? 0;
+    if (ap >= 3 || apItemCount >= 4) {
       const apThreats = threatsBy(threats, (m) => m.damageType === "ap");
+      const apFed = anyFed(apThreats);
+      const apCored = threatsAreCored(apThreats);
       recs.push({
         id: "rule:ap-heavy",
         category: "defensive-item",
-        severity: bumpSeverity(ap >= 4 ? "critical" : "high", anyFed(apThreats)),
+        severity: bumpSeverity(
+          bumpSeverity(ap >= 4 || apItemCount >= 6 ? "critical" : "high", apFed),
+          apCored,
+        ),
         title: `Stack Magic Resist — ${ap}/${total} enemies deal magic damage`,
         body:
           "Hexdrinker → Maw of Malmortius for AD/skirmishers. Mercury's Treads on most. " +
           "Force of Nature on tanks. Wit's End on attack-speed champs.",
-        rationale: `Enemy AP threats: ${formatThreats(apThreats, { withKDA: true })}.`,
+        rationale:
+          apItemCount > 0
+            ? `Enemy AP threats: ${formatThreats(apThreats, { withKDA: true })}. ${apItemCount} completed AP items already on the board.`
+            : `Enemy AP threats: ${formatThreats(apThreats, { withKDA: true })}.`,
+        source: l1("ap-heavy"),
       });
     }
-    if (ad >= 3) {
+    const adItemCount = itemProfile.presence.get("AD") ?? 0;
+    if (ad >= 3 || adItemCount >= 4) {
       const adThreats = threatsBy(threats, (m) => m.damageType === "ad");
+      const adFed = anyFed(adThreats);
+      const adCored = threatsAreCored(adThreats);
       recs.push({
         id: "rule:ad-heavy",
         category: "defensive-item",
-        severity: bumpSeverity(ad >= 4 ? "critical" : "high", anyFed(adThreats)),
+        severity: bumpSeverity(
+          bumpSeverity(ad >= 4 || adItemCount >= 6 ? "critical" : "high", adFed),
+          adCored,
+        ),
         title: `Stack Armor — ${ad}/${total} enemies deal physical damage`,
         body:
           "Plated Steelcaps for ranged-AD-heavy comps. Tabis on most. " +
           "Frozen Heart vs auto-attackers, Randuin's vs crit. " +
           "Thornmail if you also need anti-heal.",
-        rationale: `Enemy AD threats: ${formatThreats(adThreats, { withKDA: true })}.`,
+        rationale:
+          adItemCount > 0
+            ? `Enemy AD threats: ${formatThreats(adThreats, { withKDA: true })}. ${adItemCount} completed AD items already on the board.`
+            : `Enemy AD threats: ${formatThreats(adThreats, { withKDA: true })}.`,
+        source: l1("ad-heavy"),
       });
     }
 
     // ---- Healing/sustain → Grievous Wounds ----
+    // Layer-1 upgrade: separate the *static* threat (champion has healing
+    // tag) from the *active* threat (enemy actually built sustain items).
+    // We fire at LOW severity for static-only (advisory: plan for it), and
+    // escalate to HIGH/CRITICAL when items confirm the threat. If an ally
+    // already owns antiheal, we drop one severity step (problem is partly
+    // addressed).
     const healing = tagsCount.get("healing") ?? 0;
-    if (healing >= 1) {
+    const healingItemsActive = itemProfile.healingItems;
+    if (healing >= 1 || healingItemsActive.length > 0) {
       const healers = threatsBy(threats, (m) => m.tags.includes("healing"));
+      // Base severity: items present trumps champion tags alone
+      let antihealSeverity: "low" | "medium" | "high" | "critical" =
+        healingItemsActive.length === 0
+          ? "low" // Champion-tag only, no items yet — advisory
+          : healingItemsActive.length === 1
+            ? "high"
+            : "critical";
+      antihealSeverity = bumpSeverity(antihealSeverity, anyFed(healers));
+      // De-escalate if the team has already addressed it.
+      if (allyAntiheal && antihealSeverity !== "low") {
+        antihealSeverity =
+          antihealSeverity === "critical"
+            ? "medium"
+            : antihealSeverity === "high"
+              ? "medium"
+              : "low";
+      }
+
+      const itemList = healingItemsActive
+        .slice(0, 3)
+        .map((h) => `${fallbackName(h.ownerChampionId)} → ${h.itemName}`)
+        .join(", ");
+
+      const rationale =
+        healingItemsActive.length > 0
+          ? allyAntiheal
+            ? `Enemy sustain in play: ${itemList}. An ally already owns antiheal — confirm coverage or stack more.`
+            : `Enemy sustain in play: ${itemList}.`
+          : `Healing threats (no sustain items yet): ${formatThreats(healers, { withKDA: true })}.`;
+
       recs.push({
         id: "rule:antiheal",
         category: "offensive-item",
-        severity: bumpSeverity(healing >= 2 ? "critical" : "high", anyFed(healers)),
-        title: `Buy Grievous Wounds early`,
+        severity: antihealSeverity,
+        title:
+          healingItemsActive.length > 0
+            ? "Antiheal is critical now"
+            : "Plan for antiheal — enemy has sustain champions",
         body:
           "Executioner's Calling / Bramble Vest at first back. " +
           "Mortal Reminder for ADCs, Morellonomicon for mages, Chempunk for bruisers. " +
           "Don't skip — sustain compounds without antiheal.",
-        rationale: `Healing threats: ${formatThreats(healers, { withKDA: true })}.`,
+        rationale,
+        source: l1("antiheal"),
       });
     }
 
@@ -142,29 +231,48 @@ export const leagueRecommender: Recommender = {
           "Cleanse summoner if you're squishy and lack mobility. " +
           "Stack tenacity (Sterak's, Unflinching, Legend: Tenacity).",
         rationale: `CC sources: ${formatThreats(ccThreats, { withKDA: true })}.`,
+        source: l1("cc-heavy"),
       });
     }
 
     // ---- Burst / dive → Zhonya / GA ----
+    // Layer-1: bump severity when the burst threats have actually built
+    // their core damage items. A 2-burst comp at 1-item is much less scary
+    // than a 2-burst comp at 3-item.
     const burst = tagsCount.get("burst") ?? 0;
     if (burst >= 2) {
       const burstThreats = threatsBy(threats, (m) => m.tags.includes("burst"));
+      const burstFed = anyFed(burstThreats);
+      const burstCored = threatsAreCored(burstThreats);
       recs.push({
         id: "rule:burst",
         category: "defensive-item",
-        severity: bumpSeverity(burst >= 3 ? "high" : "medium", anyFed(burstThreats)),
+        severity: bumpSeverity(
+          bumpSeverity(burst >= 3 ? "high" : "medium", burstFed),
+          burstCored,
+        ),
         title: `Survive burst windows`,
         body:
           "Zhonya's Hourglass on AP carries (or Stopwatch rush). " +
           "Guardian Angel on AD carries that get dove. " +
           "Edge of Night to block the engage CC. Position behind frontline.",
-        rationale: `Burst threats: ${formatThreats(burstThreats, { withKDA: true })}.`,
+        rationale: burstCored
+          ? `Burst threats with core items: ${formatThreats(burstThreats, { withKDA: true })}.`
+          : `Burst threats: ${formatThreats(burstThreats, { withKDA: true })}.`,
+        source: l1("burst"),
       });
     }
 
     // ---- Tank stack → %HP damage ----
+    // Layer-1: only fire when tagged tanks have ALSO built tanky items.
+    // A "tank" champion at 1500g with no Health/Armor items isn't a real
+    // tank threat yet — they're just a tagged frontliner without resists.
     const tank = tagsCount.get("tank") ?? 0;
-    if (tank >= 2) {
+    const enemyHpItems = itemProfile.presence.get("HP") ?? 0;
+    const enemyArmorItems = itemProfile.presence.get("Armor") ?? 0;
+    const enemyMrItems = itemProfile.presence.get("MR") ?? 0;
+    const tankItemThreshold = enemyHpItems + Math.max(enemyArmorItems, enemyMrItems);
+    if (tank >= 2 && (itemProfile.totalCompletedItems === 0 || tankItemThreshold >= 2)) {
       const tankThreats = threatsBy(threats, (m) => m.tags.includes("tank"));
       recs.push({
         id: "rule:tank-heavy",
@@ -175,7 +283,11 @@ export const leagueRecommender: Recommender = {
           "Liandry's Anguish + Demonic Embrace on mages. " +
           "Blade of the Ruined King on attack-speed AD. " +
           "Conqueror keystone on bruisers. Black Cleaver to shred armor for the team.",
-        rationale: `Tank threats: ${formatThreats(tankThreats, { withKDA: true })}.`,
+        rationale:
+          tankItemThreshold > 0
+            ? `Tank threats: ${formatThreats(tankThreats, { withKDA: true })}. ${tankItemThreshold} tanky items already built.`
+            : `Tank threats: ${formatThreats(tankThreats, { withKDA: true })}.`,
+        source: l1("tank-heavy"),
       });
     }
 
@@ -193,6 +305,7 @@ export const leagueRecommender: Recommender = {
           "Hold Flash on key targets. Buy Pink Wards before objectives. " +
           "Consider Exhaust on one ally instead of Heal.",
         rationale: `Engage threats: ${formatThreats(engageThreats, { withKDA: true })}.`,
+        source: l1("engage"),
       });
     }
 
@@ -210,6 +323,7 @@ export const leagueRecommender: Recommender = {
           "Force fights through tight terrain (river, dragon pit). " +
           "Buy MR shoes early for AP poke; sustain support (Soraka/Nami) helps.",
         rationale: `Poke threats: ${formatThreats(pokeThreats, { withKDA: true })}.`,
+        source: l1("poke"),
       });
     }
 
@@ -227,6 +341,7 @@ export const leagueRecommender: Recommender = {
           "Take Rift Herald and use it on towers. Snowball mid > side lanes. " +
           "If you fall behind, play 4-1 splitpush rather than 5v5.",
         rationale: `Scaling threats: ${formatThreats(scaleThreats, { withKDA: true })}.`,
+        source: l1("scaling"),
       });
     }
 
@@ -243,26 +358,34 @@ export const leagueRecommender: Recommender = {
           "Always know where their splitpusher is. Trade objectives — don't try to 5v4 catch. " +
           "TP on top laner. Have one ally (jg/sup) ward inner river when team grouped.",
         rationale: `Splitpush threats: ${formatThreats(splitThreats, { withKDA: true })}.`,
+        source: l1("split"),
       });
     }
 
     // ---- Shielding → antishield ----
     const shielding = tagsCount.get("shielding") ?? 0;
-    if (shielding >= 2) {
+    const shieldItemCount = itemProfile.presence.get("Shielding") ?? 0;
+    if (shielding >= 2 || shieldItemCount >= 2) {
       const shieldThreats = threatsBy(threats, (m) => m.tags.includes("shielding"));
       recs.push({
         id: "rule:shielding",
         category: "offensive-item",
-        severity: bumpSeverity("medium", anyFed(shieldThreats)),
+        severity: bumpSeverity(
+          shieldItemCount >= 2 ? "high" : "medium",
+          anyFed(shieldThreats),
+        ),
         title: `Cut through shields`,
         body:
           "Serpent's Fang on AD assassins/marksmen. " +
           "Axiom Arc / lethality items help burst through. " +
           "Force fights when their shield CDs are down (post-engage).",
         rationale:
-          shieldThreats.length > 0
-            ? `Shield sources: ${formatThreats(shieldThreats, { withKDA: true })}.`
-            : "Multiple sources of shielding in their composition.",
+          shieldItemCount > 0
+            ? `Shield items in play: ${shieldItemCount} on ${formatThreats(shieldThreats, { withKDA: true })}.`
+            : shieldThreats.length > 0
+              ? `Shield sources: ${formatThreats(shieldThreats, { withKDA: true })}.`
+              : "Multiple sources of shielding in their composition.",
+        source: l1("shielding"),
       });
     }
 
@@ -276,6 +399,7 @@ export const leagueRecommender: Recommender = {
         body:
           "First two drakes + Herald are critical against scalers. " +
           "Force a fight at the first drake spawn (5:00).",
+        source: l1("obj-early"),
       });
     } else if (engage >= 3) {
       recs.push({
@@ -286,6 +410,7 @@ export const leagueRecommender: Recommender = {
         body:
           "Their engage thrives on ungrouped fights. " +
           "Sweep both river bushes before Drake/Herald. Don't 4v5 contest.",
+        source: l1("obj-disengage"),
       });
     }
 
@@ -312,6 +437,7 @@ export const leagueRecommender: Recommender = {
                 ? "Stopwatch component → Zhonya's first back."
                 : "Cloth Armor + 5 pots, then Plated Steelcaps. Stopwatch on a longer-CD ult window.",
             forAllyPosition: ally.position,
+            source: l1(`squishy-callout`),
           });
         }
       }

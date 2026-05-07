@@ -22,10 +22,8 @@ function formatSec(s: number) {
 
 export function MacroCallBanner({ call, fetchedAt }: MacroCallBannerProps) {
   const reduce = useReducedMotion();
-  const ticking = useTickingTime(call.inSeconds ?? 0, fetchedAt);
-  const sinceFetch = Math.floor((Date.now() - fetchedAt) / 1000);
+  const sinceFetch = useTickingTime(0, fetchedAt);
   const remaining = call.inSeconds !== undefined ? Math.max(0, call.inSeconds - sinceFetch) : null;
-  void ticking;
 
   return (
     <motion.div

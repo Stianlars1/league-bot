@@ -6,6 +6,7 @@ import Image from "next/image";
 import { leagueIcons } from "@/lib/games/league/icons";
 import type { AllyAction } from "@/lib/games/types";
 
+import { BuildPath } from "./build-path";
 import styles from "./ally-action-board.module.css";
 
 interface AllyActionBoardProps {
@@ -121,6 +122,10 @@ export function AllyActionBoard({ actions }: AllyActionBoardProps) {
                   <span className={styles.watchReason}>{a.watchOut.reason}</span>
                 </div>
               </div>
+            ) : null}
+
+            {a.buildPath && a.buildPath.length > 0 ? (
+              <BuildPath steps={a.buildPath} source={a.source} />
             ) : null}
           </motion.article>
         ))}

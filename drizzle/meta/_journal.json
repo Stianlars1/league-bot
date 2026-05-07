@@ -8,6 +8,13 @@
       "when": 1777741432786,
       "tag": "0000_fantastic_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777978631016,
+      "tag": "0001_puzzling_wild_pack",
+      "breakpoints": true
     }
   ]
 }

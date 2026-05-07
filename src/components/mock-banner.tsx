@@ -21,6 +21,9 @@ export function MockBanner({ mock }: MockBannerProps) {
   const [secondsLeft, setSecondsLeft] = useState(mock.nextChangeIn);
 
   useEffect(() => {
+    // Resyncs local countdown to the server-provided `nextChangeIn` whenever
+    // the server polls, so the bar lands at zero exactly at scenario rotation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server-driven resync of locally-decremented timer
     setSecondsLeft(mock.nextChangeIn);
   }, [mock.nextChangeIn, mock.scenarioId]);
 

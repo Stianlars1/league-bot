@@ -1,8 +1,8 @@
 {
-  "name": "counter-companion-extension",
+  "name": "peeked-companion-extension",
   "version": "0.1.0",
   "private": true,
-  "description": "Counter Companion browser extension — polls Riot's Live Client Data and forwards frames to the Counter relay.",
+  "description": "Peeked Companion browser extension — polls Riot's Live Client Data and forwards frames to the Peeked relay.",
   "type": "module",
   "scripts": {
     "build": "tsx esbuild.config.ts",

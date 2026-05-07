@@ -15,6 +15,7 @@
     "extension:install": "cd extension && pnpm install --ignore-workspace",
     "extension:build": "cd extension && pnpm build",
     "extension:watch": "cd extension && pnpm watch",
+    "extension:icons": "bash scripts/render-extension-icons.sh",
     "refresh-key": "tsx scripts/refresh-riot-key.ts"
   },
   "dependencies": {

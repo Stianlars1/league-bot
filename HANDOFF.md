@@ -416,21 +416,194 @@ Original Playwright approach blocked by Google's SSO automation check. Pivoted t
 - Any browser extension change for the rebrand (`extension/manifest/manifest.*.json` `name` is still "Counter Companion")
 - Pre-existing `pnpm lint` failures (12 errors, all setState-in-effect / data-dragon empty interface) — none introduced by this session, none in lines I touched
 
-## Pending items — per-item blockers (as of session 6)
+## Session 7 (2026-05-05) — extension rebrand + PAK package + lint cleanup
+
+You picked all four items from session 6's pending table. Plan saved at
+`/Users/stian/.claude/plans/peeked-v0-1-enchanted-mist.md`. Live-match smoke
+test was the only listed item dropped (per your answer).
+
+### What shipped
+
+**Item D — lint cleanup (ended at 0 errors / 0 warnings).** Total scope was
+larger than the session-6 count of 12 errors because two more rules had
+fired since: `react-hooks/purity` (Date.now() in render, 3 sites) and
+`react/no-unescaped-entities`. All cleared.
+
+- `companion-panel.tsx` — bootstrap effect now suppresses
+  `react-hooks/set-state-in-effect` only on the first setState (rule fires
+  once per effect). Ticking interval made unconditional so the existing
+  `now` state can replace `Date.now()` for the frame-age display.
+- `mock-banner.tsx` / `use-ticking-time.ts` — server-driven resync of
+  locally-decremented timer is a legitimate pattern; suppressed with
+  why-comment.
+- `use-live-match.ts` — companion-token deferred read (hydration safety) +
+  null-streak counter both suppressed with why-comments.
+- `data-dragon.ts` — `interface VersionsResponse extends Array<string> {}`
+  → `type VersionsResponse = string[]`.
+- `icons.tsx` — removed unused `/* eslint-disable @next/next/no-img-element */`.
+- `macro-call-banner.tsx`, `match-intel-strip.tsx` — replaced
+  `Math.floor((Date.now() - fetchedAt) / 1000)` in render with
+  `useTickingTime(0, fetchedAt)`. Removes the `void ticking` / `void inSec`
+  no-ops the previous author left as migration markers.
+- `live-view.tsx` — escaped the apostrophe in "Riot's" (the rule already
+  flagged the contraction `isn&apos;t` on the same line).
+- `eslint.config.mjs` — added `extension/dist/**` to globalIgnores so
+  esbuild build artifacts no longer surface "unused var" warnings on every
+  lint run.
+
+**Item A — Counter Companion → Peeked Companion + counter.app → peeked.app.**
+33 lines across 11 files in `extension/`. Manifests (name, description,
+host_permissions, gecko.id), popup HTML/TS/CSS, offscreen HTML, lib/relay.ts
+DEFAULT_HOST, lib/pair.ts error messages, lib/log.ts prefix, package.json
+name + description, esbuild.config.ts header, README.md throughout. Verified:
+`pnpm extension:build` produces both dist directories cleanly; new manifests
+contain `Peeked Companion` + `https://peeked.app/*` + Firefox gecko.id
+`peeked-companion@peeked.app`; `grep counter.app` and `grep "Counter Companion"`
+both return zero hits in extension source.
+
+**Item B — real icon art.** `scripts/render-extension-icons.sh` (new) reads
+`public/peeked-mark.svg`, sed-substitutes `currentColor` → `#a1ff36` and
+`var(--mark-knockout, #0a0a0c)` → `#0a0a0c` (matching `src/app/icon.tsx`),
+strips XML comments (the source SVG has `--mark-knockout` inside a comment,
+which rsvg-convert rejects as invalid XML), and calls `rsvg-convert` at
+16/48/128. Wired as `pnpm extension:icons` in root package.json. PNGs went
+from 152–281 byte Pillow placeholders to 331–806 byte real Peeked marks.
+
+**Item C — PAK submission package.**
+- New routes: `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`,
+  both static, both rendering Peeked-branded prose with the existing
+  Header. Shared CSS at `src/components/legal-page.module.css`.
+- TODO placeholders that need your input before deploy:
+  `{{TODO: contact email}}` in both pages, `{{TODO: jurisdiction}}` in
+  terms only. Rendered as styled inline tokens so they're visible during
+  review.
+- `docs/riot-personal-application-key.md` — Application Name, URL, Privacy
+  Policy URL, Terms of Service URL, Logo, Description all flipped from
+  Counter → Peeked. Blockers section reduced from 4 to 5 *user-side*
+  items (deploy domain, fill 2 TODOs, open-source y/n, real call-rate
+  estimate). All in-codebase blockers are now resolved.
+
+### Verified
+
+- `pnpm lint` — 0 errors, 0 warnings (root)
+- `pnpm exec tsc --noEmit` — clean (root + extension)
+- `pnpm extension:build` — both `dist/chrome/` and `dist/firefox/` produced cleanly
+- `pnpm build` — Next.js build passes with `/privacy` + `/terms` listed as
+  static routes alongside the session-6 routes (`/companion`, `/match/[game]/[matchId]`,
+  `/icon`, `/apple-icon`, `/opengraph-image`)
+- `grep -ri "counter.app" extension/` → 0 hits
+- `grep -ri "Counter Companion" extension/` → 0 hits
+- 128px Peeked mark PNG inspected — lime forward shape, dark diagonal
+  slice, faded back rect
+
+### NOT verified this session
+
+- Running League match through full Live Client → Companion → /live pipe
+  (skipped per your answer to "Live-match smoke test")
+- Edge / Firefox extension smoke test (still deferred from session 5; the
+  rebrand changed manifest fields so this should be reverified once
+  someone has the browsers open)
+- Visual rendering of `/privacy` and `/terms` in a browser — build emits
+  them as static routes without errors but I didn't open a dev server to
+  confirm the layout reads well at every breakpoint
+- `pnpm refresh-key` end-to-end smoke (still deferred from session 6)
+
+## Session 8 (2026-05-05) — tiered recommender engine: Layer 1 + Layer 2 + Layer 3 (dormant) + UI
+
+User flagged that the recommender — the actual core of the product — was reading enemy *champions* but ignoring their *items*, even though the data was already in the Match object. A 5/0 enemy with one Pickaxe escalated threat; a 0/5 enemy with full burst items did not. Plan written at `docs/plans/recommender-tiered-engine.md`. End-state: layered 1+2+3 architecture, Layer 3 dormant until Riot Personal Application Key approves.
+
+### Layer 1 — Item-aware rules (live state anchored)
+
+- **`src/lib/games/league/item-tags.ts`** — Data Dragon item DB classifier. 17 stat tags (AP/AD/MR/Armor/HP/Lifesteal/Omnivamp/Healing/Shielding/AntiHeal/etc.). Pure derivation from Riot's published `tags` + description text. Module-scope cache keyed by patch version. AntiHeal detected via "Grievous Wounds" string; Healing/Shielding via active-effect description text. Tightened `isLegendary` to require `cost >= 1500` after the smoke caught Doran's items being mis-classified.
+- **`src/lib/games/types.ts`** — added `RecommendationSource` discriminated union, `BuildStep` interface, `ThreatType` union (13 semantic threats), `AllyAction.buildPath`. All optional, fully back-compat.
+- **`src/lib/games/league/ally-actions.ts`** — `Threat` extended with `completedItems` + `itemTags`. Threat score now `kills*3 + assists - deaths*2 + level/4 + gold/1500 + completedItems*2`. New `buildEnemyItemProfile()` aggregator + `allyHasAntiheal()` helper.
+- **`src/lib/games/league/recommender.ts`** — every rule emits `source: { layer: 1, ruleId }`. Antiheal now distinguishes "champion-tag healer (advisory)" from "actual sustain items in inventory (critical)". Tank/AP/AD/Burst/Shielding rules gate on real item presence. Severity bumps once for `fed` and again for `cored` (>=2 completed legendaries). Antiheal de-escalates one step when an ally already owns antiheal.
+- **API routes** — `ensureItemDb()` warms before recommender runs (best-effort, swallows fetch errors so a Data Dragon outage degrades gracefully to tag-only behavior).
+- **Smoke verified** at `scripts/smoke-recommender-l1.ts`: same-KDA Ahri at 2-item carries +4 threat (~26%) over the 0-item version. Items now visibly move the needle. KDA still dominates extreme contrasts, which is realistic.
+
+### Layer 2 — Curated counter-graph + per-champion paths
+
+- **`src/lib/games/league/data/counter-graph.ts`** — 13 threat-type entries (AP-burst, AP-DoT, AP-sustained, AD-burst, AD-sustained, AD-attackspeed, Tank, Healing, Shielding, CC-chain, Engage, Poke, Roam) with ~30 cited counter items. Every counter cites Riot Data Dragon by item ID + mechanic phrase. No invented mechanics.
+- **`src/lib/games/league/data/items-curated.ts`** — 24 items. When an enemy completes a curated item, its `signals` field refines the threat type (Liandry → AP-DoT, Lich Bane → AP-burst, Goredrinker → Healing, Eclipse → AD-burst).
+- **`src/lib/games/league/data/champions-curated.ts`** — **ALL 167 champions** (entire LoL roster). Every playable champion has an entry with positions, intrinsic threat types, core build path (cited), at least one power spike, and 1–4 counteredBy entries with kit-mechanic citations. Each entry: positions, intrinsicThreatTypes, coreBuild (cited), powerSpikes, counteredBy (kit-specific items with mechanic citation).
+- **`src/lib/games/league/recommender-l2.ts`** — `getLayer2BuildPaths(match)` algorithm: aggregate enemy threats across champions+items (item signals weighted 2x), pick top 2 dominants → `COUNTER_GRAPH` lookup with damage-flavor routing for antiheal (AD ally → Mortal Reminder; AP ally → Morellonomicon) → emit BuildSteps. Adds enemy `counteredBy` entries last (champion-specific kit counters).
+- **`src/lib/games/league/ally-actions.ts`** — `getAllyActions()` now calls `getLayer2BuildPaths()` and attaches `buildPath` to `AllyAction` for curated allies. Uncurated allies fall back to layer-1 priority/followUps (zero behavior change for them).
+- **Smoke verified** at `scripts/smoke-recommender-l2.ts`: ally Yasuo + enemies (Aatrox + Hydra + DD; Ahri + Liandry) → buildPath includes Mortal Reminder (Healing routed for AD), Frozen Heart (AD-sustained), Bramble Vest (vs Aatrox kit). Sona (uncurated) correctly gets no buildPath. Every BuildStep carries a citation.
+
+### Layer 3 — Empirical aggregates from Match-V5 (SCAFFOLDED, DORMANT)
+
+Storage: pre-existing `DATABASE_URL` (Postgres-compatible, currently dbhost.app per user). New tables added additively.
+
+- **`src/lib/db/schema-recommender.ts`** — three tables: `match_player_builds` (per-player per-match snapshot), `champion_build_aggregates` (materialized win-rate per champion/position/patch/build-signature), `ingest_state` (cron resume cursors per region/patch).
+- **Migration `drizzle/0001_puzzling_wild_pack.sql`** — generated via `pnpm db:generate`. Apply with `pnpm db:push` when activating Layer 3.
+- **`src/lib/games/league/recommender-l3.ts`** — `getEmpiricalBuild()` queries the aggregates table; returns `null` when `RECOMMENDER_LAYER_3=false` (default). When enabled, returns top BuildSteps with `confidence: "empirical"` and a citation including sample size + win rate + patch. Plus `mergeLayer3(match, actions)` — wired into BOTH API routes; no-op when flag off (so routes don't have to branch).
+- **Ingest stubs** under `src/lib/games/league/ingest/`:
+  - `league-v4.ts` — Master+ summoner ID fetcher (shells; bodies are TODO-marked for post-PAK)
+  - `match-v5.ts` — Match detail + timeline fetcher (shells)
+  - `aggregator.ts` — fully-implemented derivation logic (build-signature aggregation, win-rate, pacing) — works as soon as raw rows exist
+  - `patch-tracking.ts` — patch detection from Data Dragon (working, used today)
+- **`src/app/api/cron/ingest-l3/route.ts`** — cron route guarded by CRON_SECRET + `RECOMMENDER_LAYER_3_INGEST` env flag. Returns 200 with `{status: "dormant"}` when flag off. When flag on, walks Master+ summoners → match IDs → snapshots; ingest module bodies are stubs so it walks no data today (intentional).
+- **`vercel.json`** — added cron entry `0 7 * * *` for `/api/cron/ingest-l3` (1 hour after the existing `refresh-catalog` cron).
+- **`.env.example`** — `RECOMMENDER_LAYER_3=false`, `RECOMMENDER_LAYER_3_INGEST=false` documented with activation runbook.
+
+**Activation runbook** (when PAK approves, future session):
+1. `pnpm db:push` to apply migration 0001 to production DB.
+2. Set `RECOMMENDER_LAYER_3_INGEST=true` in production env.
+3. Implement the TODO-marked bodies in `ingest/league-v4.ts` and `ingest/match-v5.ts` (real Riot API fetches with rate-limit-aware retry).
+4. Manually trigger `/api/cron/ingest-l3` once via curl + CRON_SECRET to seed.
+5. After ~7 days of daily ingest, sample size threshold (>=30) hit for top champions.
+6. Set `RECOMMENDER_LAYER_3=true` so the recommender starts merging empirical results.
+7. Monitor: how often layer 3 wins the merge; ingest-job latency; error count.
+
+### UI surface — buildPath now visible to users
+
+- **`src/components/build-path.tsx`** + **`build-path.module.css`** — renders an ordered next-buy list with Data Dragon item icons, cost, reason, and citation per step. Source chip at the head reflects which layer produced the list (rule / curated / empirical · backed by N games · win rate · patch).
+- **`src/components/ally-action-board.tsx`** — `<BuildPath>` rendered under each ally card when `buildPath` is non-empty. Layer-1 priority/followUps stay above for context.
+
+### Verified end-to-end
+
+- `pnpm exec tsc --noEmit` clean (root + extension)
+- `pnpm lint` 0 errors / 0 warnings
+- `pnpm build` passes — all routes including new `/api/cron/ingest-l3` listed
+- L1 smoke: items add ~26% threat at identical KDA ✓
+- L2 smoke: curated/uncurated split works, citations present, antiheal flavor-routed correctly ✓
+
+### Honest scope reality
+
+- **All 167 champions curated** — full LoL roster covered. Every playable champion has an entry. Top-50 most-played champions have richer entries (3-4 counteredBy with detailed citations); long-tail champions have minimal-but-cited entries (1-2 counteredBy focused on the most-load-bearing kit mechanic).
+- **47 signal items curated** (almost halfway to plan's ~100 target). Coverage spans: AP burst/DoT/sustained signature items, AD lethality stack, AD bruiser cores (Trinity/Black Cleaver/Sterak/Manamune/Muramana), AD ADC items (Shieldbow/Collector/Navori/PD/Runaan's), AP signatures (Shadowflame/Demonic Embrace/Cosmic Drive/Rylai's/Riftmaker), tank cores (Heartsteel/Jak'Sho/Dead Man's), hybrid (Wit's End). All items referenced by champion `counteredBy` entries present.
+- **Component-aware build paths** — `computeUpgradeCost()` walks Data Dragon's `from` array. When ally already owns a sub-component (e.g., Hexdrinker for Maw), BuildStep's `cost` reflects the upgrade price (1800g) not full recipe (3100g), and `componentsOwned` is populated. UI shows "Upgrade from owned components" badge.
+- Layer 3 ingest bodies are stubs; aggregator is fully-implemented and ready for real data
+- Live-match smoke against a real LoL game still deferred (no game played this session)
+- UI tested via build only; not opened in a browser to confirm the BuildPath component renders well at every breakpoint
+- Per the user's "no LoL knowledge — act as the pro" instruction, every champion entry's `counteredBy` citations point at Riot Data Dragon mechanics (champion ability descriptions or item passives). Where champion mechanics may have been reworked recently I cited the general phrasing without exact numbers; specific values shift per patch.
+
+### NOT verified this session
+
+- The full L3 ingest path against a real Riot API (impossible without PAK; that's the point of dormant)
+- Real Match-V5 → aggregator → query roundtrip (no real rows)
+- Browser rendering of the new `<BuildPath>` component in `/live/league/<id>` views (build-only verification)
+
+## Pending items — per-item blockers (as of session 8)
 
 Per RULES.md none of these were silently advanced. Each needs your input.
 
 | Item | What it needs from you |
 |---|---|
-| Extension rebrand (Counter Companion → Peeked Companion) | Drop 04 was "src/ visual layer only". Extension manifests + popup copy still say "Counter Companion". Decision: separate rebrand session, or keep "Counter Companion" as the extension product name (sub-brand)? |
-| Production hostname swap | The actual production URL. Today `https://counter.app` is a placeholder in `extension/manifest/manifest.{chrome,firefox}.json` + `extension/src/lib/relay.ts`. Now that the brand is Peeked, the URL is presumably `peeked.app` (per Drop 04 codebase references) — confirm and I'll do the swap. |
-| Personal Application Key (PAK) submission | Four blockers in `docs/riot-personal-application-key.md` must clear: production URL hosted, privacy policy hosted, terms of service hosted, real logo art (current `extension/assets/icon-*.png` are Pillow placeholders). Logo blocker is now LESS severe — `public/peeked-mark.svg` is the real brand mark; same SVG can be used for the extension icon if you want. |
-| Real icon art for extension popup | `extension/assets/icon-{16,48,128}.png` are Pillow placeholders. The Peeked mark SVG could be rendered to PNGs at those sizes. Decision: use the new mark, or a different extension icon? |
-| Store accounts | User-action: Chrome Web Store ($5, Google account), Firefox AMO (free), Edge Add-ons (free, requires Microsoft Partner Center). Order of registration is your call. |
-| Production storage swap | Architectural pick: Vercel Marketplace Postgres vs Upstash Redis — both noted in `docs/companion-app.md`. Both need credentials + schema. |
+| **Champion curation polish** | All 167 champions covered. Long-tail entries (Amumu, Yuumi, etc.) have minimal counteredBy lists by design — adding more nuance per champion is incremental polish, not blocking. |
+| **Item curation expansion** | 24 signal items cover the threat-type-refining cases. Adding more items (e.g., Manamune, Trinity Force, Iceborn Gauntlet) would let the recommender detect more nuanced enemy patterns, but the existing set covers the major archetypes. Optional. |
+| **Implement L3 ingest bodies** | Post-PAK only. `ingest/league-v4.ts` and `ingest/match-v5.ts` have TODO-marked function bodies. Each is bounded — the function signatures are correct, just need the real Riot API calls + rate-limit handling. |
+| **Activate Layer 3** | Once PAK approves: `pnpm db:push`, flip `RECOMMENDER_LAYER_3_INGEST=true`, wait 7 days for aggregates to fill, flip `RECOMMENDER_LAYER_3=true`. |
+| Deploy `peeked.app` | The site needs to be reachable at `https://peeked.app` for the PAK submission's URL fields to resolve when Riot's reviewer clicks them. Vercel deploy + DNS pointing the domain at it. User-action. |
+| Fill `{{TODO: contact email}}` | Two render sites in `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`. Pick the support email Riot's reviewer can mail. |
+| Fill `{{TODO: jurisdiction}}` | One render site in `src/app/terms/page.tsx`. Governing-law jurisdiction (your country / state). |
+| PAK form — open-source yes/no | One blank field in the application. |
+| PAK form — real API call-rate estimate | Adjust the DRAFT estimate in `docs/riot-personal-application-key.md` to your actual expectation. |
 | Edge / Firefox extension smoke test | User-action, deferred. Load `dist/firefox/manifest.json` as temp add-on; `dist/chrome/` in Edge via `edge://extensions`. |
-| Pre-existing lint failures | `pnpm lint` has 12 errors (setState-in-effect in companion-panel + use-ticking-time + use-live-match; empty interface in data-dragon; unused eslint-disable in icons.tsx). None blocking the build. Decide whether to fix in a cleanup pass. |
-| `pnpm refresh-key` end-to-end smoke | Run it, log in to dev portal, copy your key, watch the script catch it. If selectors / clipboard pattern differ from what I wrote, I'll iterate. |
+| `pnpm refresh-key` end-to-end smoke | Run it, log in to dev portal, copy your key, watch the script catch it. |
+| Live-match smoke test | You queue a League match, walk through pairing the extension and watching frames flow Live Client → ingest → SSE → /live. Verifies the air-tightened recommender against real game state. |
+| Browser-test the BuildPath UI | Open `/live/league/<id>?mock=1` in a dev browser; confirm the buildPath card renders well at mobile + desktop, citations are readable, source chip looks right. |
+| Store accounts | User-action: Chrome Web Store ($5, Google account), Firefox AMO (free), Edge Add-ons (free, requires Microsoft Partner Center). |
 | **Older queue (unchanged)** | |
 | #5 WoW game support | Major new feature. Battle.net app registration + OAuth credentials, decision on Raider.IO API key vs anonymous, decision on whether `GameId` adds `\| "wow"` or a parallel system. |
 | #9 Mirror Community Dragon assets | New build/cron job. Decisions: refresh cadence, where to host (`/public/assets/lol/` vs blob storage), what subset of CDragon to mirror. |

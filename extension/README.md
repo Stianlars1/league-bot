@@ -1,8 +1,8 @@
-# Counter Companion — browser extension
+# Peeked Companion — browser extension
 
-The Counter Companion v1 distribution: a Manifest V3 browser extension that
+The Peeked Companion v1 distribution: a Manifest V3 browser extension that
 polls Riot's Live Client Data API at `https://127.0.0.1:2999` and forwards
-frames to the Counter relay. See [`../docs/plans/extension-v1.md`](../docs/plans/extension-v1.md)
+frames to the Peeked relay. See [`../docs/plans/extension-v1.md`](../docs/plans/extension-v1.md)
 for the full build plan and the decisions baked into it.
 
 ## Quick start
@@ -40,7 +40,7 @@ Then reload the extension in `chrome://extensions` after each rebuild.
 Same 6-character pairing code flow as the Phase 0 `pnpm companion:dev` script:
 
 1. Click the extension toolbar icon.
-2. "Pair this browser" → opens `counter.app/companion` in a new tab.
+2. "Pair this browser" → opens `peeked.app/companion` in a new tab.
 3. Inside the developer disclosure on that page, generate a pairing code.
 4. Paste the code into the extension popup.
 
@@ -60,8 +60,8 @@ browser. The extension popup detects this and walks the user through:
 
 ## Override the relay host (dev)
 
-The extension defaults to `https://counter.app` (placeholder until production
-hostname is known). To point it at your local dev server:
+The extension defaults to `https://peeked.app`. To point it at your local
+dev server:
 
 1. Click the extension toolbar icon.
 2. Expand the **Advanced — change relay host** disclosure inside the popup.
@@ -101,14 +101,7 @@ dist/
 - ✅ Cross-browser manifests
 - ✅ Pairing + status popup
 - ✅ Cert-acceptance onboarding
+- ✅ Production relay hostname wired to `peeked.app`
+- ✅ Brand mark icons (rendered from `public/peeked-mark.svg` via `pnpm extension:icons`)
 - ⏳ Web Store / AMO accounts (none registered yet)
-- ⏳ Real icon art (current `assets/icon-*.png` are placeholders)
-- ⏳ Production relay hostname (find/replace in manifests + `lib/relay.ts`)
-
-## Replace before Web Store / AMO submission
-
-```
-extension/assets/icon-{16,48,128}.png   ← real branded art
-extension/manifest/manifest.*.json      ← swap counter.app placeholder for real host
-extension/src/lib/relay.ts              ← same swap
-```
+- ⏳ Edge / Firefox in-browser smoke test (Chrome/macOS verified)

@@ -116,7 +116,7 @@ function renderUnpaired(): void {
   const card = el("div", { className: "card" }, [
     el("p", {
       className: "copy",
-      text: "Counter Companion needs a one-time pairing handshake with your Counter web session before it can stream data.",
+      text: "Peeked Companion needs a one-time pairing handshake with your Peeked web session before it can stream data.",
     }),
     el("button", {
       className: "btn-primary",
@@ -228,7 +228,7 @@ function renderPaired(v: Extract<View, { kind: "paired" }>): void {
   const copy = el("p", {
     className: "copy",
     text: flowing
-      ? "Streaming frames to your Counter view."
+      ? "Streaming frames to your Peeked view."
       : "Paired and watching for a League match. Start one in your client and frames will arrive here.",
   });
   $body.appendChild(el("div", { className: "card" }, [copy, stats]));
@@ -265,7 +265,7 @@ function buildAdvanced(): HTMLElement {
     className: "input advanced-input",
     attrs: {
       type: "text",
-      placeholder: "https://counter.app",
+      placeholder: "https://peeked.app",
       autocomplete: "off",
       spellcheck: "false",
     },
